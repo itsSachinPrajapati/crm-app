@@ -26,6 +26,9 @@ app.use("/api/leads", leadRoutes);
 const clientRoutes = require("./routes/clientRoutes");
 app.use("/api/clients", clientRoutes);
 
+const taskRoutes = require('./routes/taskRoutes');
+app.use('/api/tasks', taskRoutes);
+
 const authMiddleware = require("./middleware/authMiddleware");
 
 
