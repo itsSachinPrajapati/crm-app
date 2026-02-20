@@ -3,82 +3,114 @@ const db = require("../config/db");
 // ==========================
 // CREATE LEAD
 // ==========================
-exports.createLead = (req, res) => {
-  const { name, email, phone, source, expected_value } = req.body;
+exports.createLead = async (req, res) => {
+  try {
+    const { name, email, phone, source, expected_value } = req.body;
 
-  if (!name) {
-    return res.status(400).json({ message: "Name is required" });
+    if (!name) {
+      return res.status(400).json({ message: "Name is required" });
+    }
+
+    const user_id = req.user.id;
+
+    const [result] = await db.execute(
+      "INSERT INTO leads (name, email, phone, status, source, expected_value, user_id) VALUES (?, ?, ?, 'new', ?, ?, ?)",
+      [name, email, phone, source || "manual", expected_value || 0, user_id]
+    );
+
+    return res.status(201).json({
+      message: "Lead created successfully",
+      leadId: result.insertId
+    });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
-
-  const user_id = req.user.id;
-
-  db.query(
-    "INSERT INTO leads (name, email, phone, status, source, expected_value, user_id) VALUES (?, ?, ?, 'new', ?, ?, ?)",
-    [name, email, phone, source || "manual", expected_value || 0, user_id],
-    (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-
-      return res.status(201).json({ message: "Lead created successfully" });
-    }
-  );
 };
 
 // ==========================
-// GET LEADS (Only Own Leads)
+// GET LEADS
 // ==========================
-exports.getLeads = (req, res) => {
-  const user_id = req.user.id;
+exports.getLeads = async (req, res) => {
+  try {
+    const user_id = req.user.id;
 
-  db.query(
-    "SELECT * FROM leads WHERE user_id = ? ORDER BY created_at DESC",
-    [user_id],
-    (err, results) => {
-      if (err) return res.status(500).json({ error: err.message });
+    const [results] = await db.execute(
+      "SELECT * FROM leads WHERE user_id = ? ORDER BY created_at DESC",
+      [user_id]
+    );
 
-      return res.status(200).json(results);
-    }
-  );
-};
+    return res.status(200).json(results);
 
-// ==========================
-// UPDATE LEAD (Status Logic)
-// ==========================
-exports.updateLead = (req, res) => {
-  const { status } = req.body;
-  const leadId = req.params.id;
-  const user_id = req.user.id;
-
-  const allowedStatus = ["new", "contacted", "qualified", "closed", "lost"];
-
-  if (!allowedStatus.includes(status)) {
-    return res.status(400).json({ message: "Invalid status value" });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
   }
-
-  db.query(
-    "UPDATE leads SET status = ? WHERE id = ? AND user_id = ?",
-    [status, leadId, user_id],
-    (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
-
-      return res.status(200).json({ message: "Lead updated successfully" });
-    }
-  );
 };
 
 // ==========================
-// DELETE LEAD (Ownership Protected)
+// UPDATE LEAD
 // ==========================
-exports.deleteLead = (req, res) => {
-  const leadId = req.params.id;
-  const user_id = req.user.id;
+exports.updateLead = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const leadId = req.params.id;
+    const user_id = req.user.id;
 
-  db.query(
-    "DELETE FROM leads WHERE id = ? AND user_id = ?",
-    [leadId, user_id],
-    (err, result) => {
-      if (err) return res.status(500).json({ error: err.message });
+    const allowedStatus = ["new", "contacted", "qualified", "closed", "lost"];
 
-      return res.status(200).json({ message: "Lead deleted successfully" });
+    if (!allowedStatus.includes(status)) {
+      return res.status(400).json({ message: "Invalid status value" });
     }
-  );
+
+    await db.execute(
+      "UPDATE leads SET status = ? WHERE id = ? AND user_id = ?",
+      [status, leadId, user_id]
+    );
+
+    return res.status(200).json({ message: "Lead updated successfully" });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+// ==========================
+// DELETE LEAD
+// ==========================
+exports.deleteLead = async (req, res) => {
+  try {
+    const leadId = req.params.id;
+    const user_id = req.user.id;
+
+    await db.execute(
+      "DELETE FROM leads WHERE id = ? AND user_id = ?",
+      [leadId, user_id]
+    );
+
+    return res.status(200).json({ message: "Lead deleted successfully" });
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getLeadById = async (req, res) => {
+  try {
+    const leadId = req.params.id;
+    const user_id = req.user.id;
+
+    const [rows] = await db.execute(
+      "SELECT * FROM leads WHERE id = ? AND user_id = ?",
+      [leadId, user_id]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    return res.status(200).json(rows[0]);
+
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 };

@@ -23,6 +23,9 @@ app.use("/api/auth", authRoutes);
 const leadRoutes = require("./routes/leadRoutes");
 app.use("/api/leads", leadRoutes);
 
+const clientRoutes = require("./routes/clientRoutes");
+app.use("/api/clients", clientRoutes);
+
 const authMiddleware = require("./middleware/authMiddleware");
 
 
@@ -35,6 +38,13 @@ app.get("/api/protected", authMiddleware, (req, res) => {
 });
 
 
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Server is running ✅",
+    timestamp: new Date().toISOString()
+  });
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

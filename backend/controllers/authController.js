@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 
 // REGISTER
 exports.register = async (req, res) => {
+  console.log("Register route hit");
   try {
     const { name, email, password } = req.body;
 
@@ -40,6 +41,7 @@ exports.register = async (req, res) => {
 // LOGIN
 
 exports.login = async (req, res) => {
+  console.log("Login route hit");
   try {
     const { email, password } = req.body;
 
@@ -50,12 +52,10 @@ exports.login = async (req, res) => {
 
         if (err) {
           return res.status(500).json({ error: err.message }); 
-          // 👆 RETURN added (stops execution)
         }
 
         if (results.length === 0) {
           return res.status(400).json({ message: "Invalid email or password" });
-          // 👆 RETURN added
         }
 
         const user = results[0];
@@ -64,7 +64,6 @@ exports.login = async (req, res) => {
 
         if (!isMatch) {
           return res.status(400).json({ message: "Invalid email or password" });
-          // 👆 RETURN added
         }
 
         const token = jwt.sign(
@@ -88,7 +87,6 @@ exports.login = async (req, res) => {
             email: user.email,
           },
         });
-        // 👆 ONLY ONE RESPONSE
       }
     );
 
