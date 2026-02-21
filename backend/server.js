@@ -13,7 +13,7 @@ app.use((req, res, next) => {
 
 app.use(cors(
   {
-    origin: "http://localhost:3000",
+    origin: "http://localhost:5173",
     credentials:true
   }
   
@@ -33,6 +33,9 @@ app.use("/api/clients", clientRoutes);
 
 const taskRoutes = require('./routes/taskRoutes');
 app.use('/api/tasks', taskRoutes);
+
+const dashboardRoutes = require("./routes/dashboardRoutes");
+app.use("/api/dashboard", dashboardRoutes);
 
 const authMiddleware = require("./middleware/authMiddleware");
 

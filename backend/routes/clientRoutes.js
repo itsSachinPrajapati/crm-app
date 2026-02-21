@@ -4,6 +4,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 const clientController = require("../controllers/clientController");
 
 router.post("/convert/:leadId", authMiddleware, clientController.convertLeadToClient);
+router.post("/", authMiddleware, clientController.createClient);
 router.get("/", authMiddleware, clientController.getAllClients);
 router.get("/:id", authMiddleware, clientController.getClientById);
 router.put("/:id", authMiddleware, clientController.updateClient);
