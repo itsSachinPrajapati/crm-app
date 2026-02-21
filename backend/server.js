@@ -6,6 +6,11 @@ require("./config/db");
 
 const app = express();
 
+app.use((req, res, next) => {
+  console.log("METHOD:", req.method, "URL:", req.url);
+  next();
+});
+
 app.use(cors(
   {
     origin: "http://localhost:3000",
