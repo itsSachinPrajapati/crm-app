@@ -5,6 +5,11 @@ import Button from "../components/ui/Button";
 import Input from "../components/ui/Input";
 import Badge from "../components/ui/Badge";
 import api from "../services/api";
+import {
+  DragDropContext,
+  Droppable,
+  Draggable,
+} from "@hello-pangea/dnd";
 
 function Tasks() {
   const [tasks, setTasks] = useState([]);
@@ -46,46 +51,87 @@ function Tasks() {
     }
   };
 
+  const updateTaskStatus = async (taskId, newStatus) => {
+    try {
+      await api.put(`/tasks/${taskId}`, { status: newStatus });
+      fetchTasks();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const grouped = {
-    pending: tasks.filter((t) => t.status === "pending"),
-    in_progress: tasks.filter((t) => t.status === "in_progress"),
+    todo: tasks.filter((t) => t.status === "todo"),
+    inprogress: tasks.filter((t) => t.status === "inprogress"),
     completed: tasks.filter((t) => t.status === "completed"),
+  };
+
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+
+    const { draggableId, destination } = result;
+    updateTaskStatus(draggableId, destination.droppableId);
   };
 
   return (
     <DashboardLayout>
-
       <div className="flex justify-between items-center mb-10">
         <div>
-          <h1 className="text-2xl font-semibold">Tasks</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Manage your workflow
+          <h1 className="text-3xl font-semibold">Task Board</h1>
+          <p className="text-gray-400 text-sm mt-1">
+            Manage workflow visually
           </p>
         </div>
         <Button onClick={() => setOpen(true)}>+ Add Task</Button>
       </div>
 
-      <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+      <DragDropContext onDragEnd={onDragEnd}>
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
 
-        <Column title="To Do">
-          {grouped.todo.map(task => (
-            <TaskCard key={task.id} task={task} />
+          {["todo", "inprogress", "completed"].map((col) => (
+            <Droppable droppableId={col} key={col}>
+              {(provided) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.droppableProps}
+                  className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 flex flex-col min-h-[60vh]"
+                >
+                  <h2 className="text-xs text-gray-400 uppercase mb-4 tracking-wider">
+                    {col === "todo"
+                      ? "To Do"
+                      : col === "inprogress"
+                      ? "In Progress"
+                      : "Completed"}
+                  </h2>
+
+                  <div className="space-y-4 flex-1">
+                    {grouped[col].map((task, index) => (
+                      <Draggable
+                        key={task.id}
+                        draggableId={String(task.id)}
+                        index={index}
+                      >
+                        {(provided) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            className="bg-neutral-800 border border-neutral-700 rounded-xl p-4 hover:border-neutral-600 transition"
+                          >
+                            <TaskCard task={task} />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                </div>
+              )}
+            </Droppable>
           ))}
-        </Column>
 
-        <Column title="In Progress">
-          {grouped.inprogress.map(task => (
-            <TaskCard key={task.id} task={task} />
-          ))}
-        </Column>
-
-        <Column title="Completed">
-          {grouped.completed.map(task => (
-            <TaskCard key={task.id} task={task} />
-          ))}
-        </Column>
-
-      </div>
+        </div>
+      </DragDropContext>
 
       <Modal isOpen={open} onClose={() => setOpen(false)} title="Add Task">
         <div className="space-y-4">
@@ -134,17 +180,7 @@ function Tasks() {
           </Button>
         </div>
       </Modal>
-
     </DashboardLayout>
-  );
-}
-
-function Column({ title, children }) {
-  return (
-    <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 flex flex-col max-h-[70vh]">
-      <h2 className="text-sm text-gray-400 mb-4 uppercase">{title}</h2>
-      <div className="space-y-4 overflow-y-auto">{children}</div>
-    </div>
   );
 }
 
@@ -156,17 +192,20 @@ function TaskCard({ task }) {
   };
 
   return (
-    <div className="bg-neutral-800 border border-neutral-700 rounded-xl p-4">
-      <div className="flex justify-between">
-        <h3 className="text-sm">{task.title}</h3>
+    <>
+      <div className="flex justify-between items-center">
+        <h3 className="text-sm font-medium">{task.title}</h3>
         <Badge color={colors[task.priority]}>
           {task.priority}
         </Badge>
       </div>
-      <p className="text-xs text-gray-400 mt-2">
-        {task.due_date || "No due date"}
+
+      <p className="text-xs text-gray-400 mt-3">
+        {task.due_date
+          ? new Date(task.due_date).toLocaleDateString()
+          : "No due date"}
       </p>
-    </div>
+    </>
   );
 }
 

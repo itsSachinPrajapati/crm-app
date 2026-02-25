@@ -14,8 +14,7 @@ import {
   import { NavLink } from "react-router-dom";
   import { useState } from "react";
   
-  function Sidebar() {
-    const [expanded, setExpanded] = useState(false);
+  function Sidebar({ expanded, setExpanded }) {
   
     const menuItems = [
         { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -36,14 +35,24 @@ import {
   
     return (
       <div
-        onMouseEnter={() => setExpanded(true)}
-        onMouseLeave={() => setExpanded(false)}
-        className={`h-screen bg-neutral-950 border-r border-neutral-800 text-gray-400 transition-all duration-300 ${
-          expanded ? "w-64" : "w-20"
-        } flex flex-col`}
+          onMouseEnter={() => setExpanded(true)}
+          onMouseLeave={() => setExpanded(false)}
+          className={`
+            fixed left-0 top-0 h-screen
+            bg-[#0b111c]
+            border-r border-white/5
+            text-slate-400
+            transition-all duration-300
+            ${expanded ? "w-64" : "w-20"}
+            flex flex-col
+          `}
       >
         {/* Logo */}
         <div className="h-20 flex items-center justify-center border-b border-neutral-800">
+          {/* Subtle side glow */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-20 -left-32 w-[300px] h-[300px] bg-indigo-500/10 blur-[120px] rounded-full" />
+        </div>
           {expanded ? (
             <span className="text-white font-semibold text-lg">CRM</span>
           ) : (
@@ -60,8 +69,8 @@ import {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
                   isActive
-                    ? "bg-neutral-800 text-white"
-                    : "hover:bg-neutral-800 hover:text-white"
+                ? "bg-white/5 text-white border border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.03)]"
+                : "hover:bg-white/5 hover:text-white"
                 }`
               }
             >
