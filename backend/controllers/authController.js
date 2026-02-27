@@ -63,7 +63,7 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email ,role:user.role},
+      { id: user.id, email: user.email ,role:user.role,owner_id: user.owner_id},
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
@@ -81,7 +81,9 @@ exports.login = async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role:user.role
+        role:user.role,
+        owner_id: user.owner_id
+
 
       },
     });
@@ -91,3 +93,68 @@ exports.login = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+exports.resetAdminPassword = async (req, res) => {
+  try {
+    const bcrypt = require("bcrypt");
+
+    const hashed = await bcrypt.hash("Admin@123", 10);
+
+    await db.query(
+      "UPDATE users SET password = ? WHERE email = ?",
+      [hashed, "sachinprajapati2622@gmail.com"]
+    );
+
+    res.json({ message: "Password reset to Admin@123" });
+  } catch (err) {
+    res.status(500).json({ message: "Reset failed" });
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

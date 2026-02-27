@@ -214,5 +214,5 @@ values("Shubhangi Prajapati","bharati.9892@gmail.com","000sachin.@","employee");
 ALTER TABLE users 
 ADD COLUMN owner_id INT NULL,
 ADD FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE;
-
+select * from users;
 drop table team;

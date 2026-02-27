@@ -10,7 +10,10 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      await api.post("/auth/login", { email, password });
+      const res = await api.post("/auth/login", { email, password });
+
+      localStorage.setItem("user", JSON.stringify(res.data.user));
+
       navigate("/dashboard");
     } catch (error) {
       alert(error.response?.data?.message || "Login failed");
@@ -18,6 +21,7 @@ function Login() {
   };
 
   return (
+
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-black to-gray-800">
       <div className="bg-gray-900/70 backdrop-blur-lg p-10 rounded-2xl shadow-2xl w-96 border border-gray-700">
         
@@ -50,6 +54,16 @@ function Login() {
               required
             />
           </div>
+          <button
+  type="button"
+  onClick={async () => {
+    await api.post("/auth/reset-admin");
+    alert("Password reset to Admin@123");
+  }}
+  className="w-full mt-3 bg-gray-700 hover:bg-gray-600 p-2 rounded text-white text-sm"
+>
+  Reset Admin Password (Dev)
+</button>
 
           <button
             type="submit"
@@ -66,7 +80,8 @@ function Login() {
             Sign Up
           </Link>
         </p>
-
+        console.log("Email entered:", email);
+console.log("DB result:", results);
       </div>
     </div>
   );

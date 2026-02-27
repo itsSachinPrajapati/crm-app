@@ -15,15 +15,19 @@ import {
   DialogDescription
 } from "@/components/ui/dialog";
 
-const TABS = [
-  { id: "Profile", icon: "👤" },
-  { id: "Team", icon: "👥" },
-  { id: "Security", icon: "🔒" },
-];
+
 
 function Settings() {
   const [activeTab, setActiveTab] = useState("Profile");
   const [profile, setProfile] = useState({ name: "", email: "" });
+  const user = JSON.parse(localStorage.getItem("user"));
+  const isAdmin = user?.role === "admin";
+
+  const TABS = [
+    { id: "Profile", icon: "👤" },
+    ...(isAdmin ? [{ id: "Team", icon: "👥" }] : []),
+    { id: "Security", icon: "🔒" },
+  ];
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -347,7 +351,7 @@ function Settings() {
 />
                   </div>
                 </div>
-
+                
                 <div className="pt-2">
                 <Button
                   disabled={updatingPassword}
@@ -387,5 +391,6 @@ function Settings() {
     </DashboardLayout>
   );
 }
+
 
 export default Settings;
