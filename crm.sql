@@ -99,11 +99,120 @@ CREATE TABLE task_history (
 );
 
 ALTER TABLE clients MODIFY lead_id INT NULL;
+ALTER TABLE clients add project varchar(255) Not NULL;
 
 SELECT * FROM leads;
 SELECT * FROM clients;
 SELECT * FROM tasks;
+select * from payments;
 
 describe tasks;
+describe leads;
 SELECT id, name, total_value, user_id FROM clients;
 select  sum(total_value) from clients;
+
+ALTER TABLE leads
+ADD COLUMN project_info VARCHAR(255),
+ADD COLUMN address TEXT,
+ADD COLUMN proposal TEXT;
+
+CREATE TABLE projects (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  client_id INT NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  service_type VARCHAR(100),
+  total_amount DECIMAL(12,2) NOT NULL,
+  advance_amount DECIMAL(12,2) DEFAULT 0,
+  remaining_amount DECIMAL(12,2) DEFAULT 0,
+  payment_terms VARCHAR(255),
+  status ENUM('active','completed','on_hold') DEFAULT 'active',
+  current_phase ENUM('planning','design','development','testing','delivery') DEFAULT 'planning',
+  progress_percent INT DEFAULT 0,
+  start_date DATE,
+  deadline DATE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+);
+drop table projects;
+
+ALTER TABLE users 
+ADD COLUMN role ENUM('admin','employee') DEFAULT 'admin';
+
+ALTER TABLE clients DROP COLUMN total_value;
+ALTER TABLE clients
+ADD COLUMN status ENUM('active','inactive','blacklisted') DEFAULT 'active';
+
+ALTER TABLE clients
+ADD COLUMN notes TEXT;
+
+ALTER TABLE clients
+ADD COLUMN decision ENUM('qualified','not_interested','pending') DEFAULT 'qualified';
+
+ALTER TABLE tasks
+ADD COLUMN project_id INT;
+
+ALTER TABLE tasks
+ADD CONSTRAINT fk_task_project
+FOREIGN KEY (project_id) REFERENCES projects(id)
+ON DELETE CASCADE;
+
+
+ALTER TABLE payments
+ADD COLUMN project_id INT;
+
+ALTER TABLE payments
+ADD CONSTRAINT fk_project
+FOREIGN KEY (project_id) REFERENCES projects(id)
+ON DELETE CASCADE;
+
+
+ALTER TABLE leads
+MODIFY COLUMN status ENUM(
+  'new',
+  'contacted',
+  'follow_up',
+  'qualified',
+  'proposal_sent',
+  'negotiation',
+  'closed',
+  'lost'
+) DEFAULT 'new';
+
+ALTER TABLE leads
+ADD COLUMN converted_at TIMESTAMP NULL;
+
+UPDATE leads SET status = 'won' WHERE status = 'closed';
+
+
+describe  leads;
+describe clients;
+describe payments;
+describe users;
+describe tasks;
+
+CREATE TABLE lead_notes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  lead_id INT NOT NULL,
+  note TEXT NOT NULL,
+  created_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+)
+select * from leads;
+
+ALTER TABLE clients ADD COLUMN total_value DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE leads ADD COLUMN converted TINYINT(1) DEFAULT 0;
+
+SELECT id, status, converted FROM leads;
+
+insert into users (name,email,password,role) 
+values("Shubhangi Prajapati","bharati.9892@gmail.com","000sachin.@","employee");
+
+ALTER TABLE users 
+ADD COLUMN owner_id INT NULL,
+ADD FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE;
+
+drop table team;

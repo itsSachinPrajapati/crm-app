@@ -6,7 +6,10 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Leads from "./pages/Leads";
 import Clients from "./pages/Clients";
 import Tasks from "./pages/Tasks";
+import Settings from "./pages/Settings";
+import Projects from "./pages/Projects"
 
+<Route path="/settings" element={<Settings />} />
 function App() {
   return (
     <BrowserRouter>
@@ -47,6 +50,24 @@ function App() {
               <Tasks />
             </ProtectedRoute>
           }
+        /> 
+
+        <Route
+          path="/projects"
+          element={
+            <ProtectedRoute>
+              <Projects />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          }  
         />
       </Routes>
     </BrowserRouter>

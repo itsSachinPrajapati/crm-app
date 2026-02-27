@@ -9,6 +9,7 @@ import {
     Users,
     Building2,
     Plug,
+    Component ,
     Settings
   } from "lucide-react";
   import { NavLink } from "react-router-dom";
@@ -20,17 +21,17 @@ import {
         { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
         { name: "Leads", icon: Users, path: "/leads" },
         { name: "Clients", icon: Building2, path: "/clients" },
-        { name: "Tasks", icon: CheckSquare, path: "/tasks" },
+        { name: "Projects", icon: Component, path: "/Projects" }
       ];
   
-    const databaseItems = [
+    {/* const databaseItems = [
       { name: "Analytics", icon: BarChart3, path: "#" },
       { name: "Contacts", icon: Users, path: "/clients" },
       { name: "Companies", icon: Building2, path: "#" },
-    ];
+    ]; */}
   
     const bottomItems = [
-      { name: "Settings", icon: Settings, path: "#" }
+      { name: "Settings", icon: Settings, path: "/settings" }
     ];
   
     return (
@@ -64,26 +65,26 @@ import {
   
           {menuItems.map((item, index) => (
             <NavLink
-              key={index}
-              to={item.path}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
-                  isActive
-                ? "bg-white/5 text-white border border-white/10 shadow-[0_0_20px_rgba(255,255,255,0.03)]"
-                : "hover:bg-white/5 hover:text-white"
-                }`
-              }
-            >
+            key={index}
+            to={item.path}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+                isActive
+                  ? "bg-white/5 text-white border border-white/10"
+                  : "hover:bg-white/5 hover:text-white"
+              }`
+            }
+          >
               <item.icon size={20} />
               {expanded && <span className="text-sm">{item.name}</span>}
             </NavLink>
           ))}
   
-          {expanded && (
+          {/* {expanded && (
             <div className="pt-6 text-xs uppercase text-gray-600 px-3">
               Database
             </div>
-          )}
+          )} 
   
           {databaseItems.map((item, index) => (
             <NavLink
@@ -94,21 +95,27 @@ import {
               <item.icon size={20} />
               {expanded && <span className="text-sm">{item.name}</span>}
             </NavLink>
-          ))}
+          ))} */}
         </div>
   
         <div className="px-2 pb-6 space-y-2 border-t border-neutral-800 pt-4">
-          {bottomItems.map((item, index) => (
-            <NavLink
-              key={index}
-              to={item.path}
-              className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-neutral-800 hover:text-white transition"
-            >
-              <item.icon size={20} />
-              {expanded && <span className="text-sm">{item.name}</span>}
-            </NavLink>
-          ))}
-        </div>
+  {bottomItems.map((item, index) => (
+    <NavLink
+      key={index}
+      to={item.path}
+      className={({ isActive }) =>
+        `flex items-center gap-3 px-3 py-2 rounded-lg transition ${
+          isActive
+            ? "text-white"
+            : "text-slate-400 hover:text-white"
+        }`
+      }
+    >
+      <item.icon size={20} />
+      {expanded && <span className="text-sm">{item.name}</span>}
+    </NavLink>
+  ))}
+</div>
       </div>
     );
   }

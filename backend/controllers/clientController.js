@@ -32,75 +32,52 @@ exports.createClient = async (req, res) => {
   }
 };
 
-// =============================
-// CONVERT LEAD TO CLIENT
-// =============================
 exports.convertLeadToClient = async (req, res) => {
   try {
     const { leadId } = req.params;
     const userId = req.user.id;
 
+    console.log("Convert route hit:", leadId);
+
+    // 1️⃣ Select lead
     const [leads] = await db.execute(
       "SELECT * FROM leads WHERE id = ? AND user_id = ?",
       [leadId, userId]
     );
 
     if (leads.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Lead not found",
-      });
+      return res.status(404).json({ message: "Lead not found" });
     }
 
     const lead = leads[0];
 
     if (lead.status !== "closed") {
-      return res.status(400).json({
-        success: false,
-        message: "Only closed leads can be converted",
-      });
+      return res.status(400).json({ message: "Only closed leads allowed" });
     }
 
-    const [existingClient] = await db.execute(
-      "SELECT id FROM clients WHERE lead_id = ?",
+    // 2️⃣ Insert client
+    await db.execute(
+      `INSERT INTO clients 
+       (name, email, phone, user_id, lead_id)
+       VALUES (?, ?, ?, ?, ?)`,
+      [lead.name, lead.email, lead.phone, userId, leadId]
+    );
+
+    // 3️⃣ Update converted flag
+    const [updateResult] = await db.execute(
+      "UPDATE leads SET converted = 1 WHERE id = ?",
       [leadId]
     );
 
-    if (existingClient.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Lead already converted",
-      });
-    }
+    console.log("Affected rows:", updateResult.affectedRows);
 
-    const [result] = await db.execute(
-      `INSERT INTO clients 
-       (name, email, phone, total_value, user_id, lead_id)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        lead.name,
-        lead.email,
-        lead.phone,
-        lead.expected_value || 0,
-        userId,
-        leadId,
-      ]
-    );
+    res.json({ message: "Converted successfully" });
 
-    res.status(201).json({
-      success: true,
-      message: "Lead converted successfully",
-      clientId: result.insertId,
-    });
-  } catch (error) {
-    console.error("Convert Error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+  } catch (err) {
+    console.error("Convert Error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
-
 // =============================
 // GET ALL CLIENTS
 // =============================

@@ -36,7 +36,7 @@ exports.getLeads = async (req, res) => {
     const user_id = req.user.id;
 
     const [results] = await db.execute(
-      "SELECT * FROM leads WHERE user_id = ? ORDER BY created_at DESC",
+      "SELECT * FROM leads WHERE user_id = ? AND converted = 0",
       [user_id]
     );
 
@@ -114,3 +114,46 @@ exports.getLeadById = async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 };
+
+// ➤ Update lead status
+exports.updateLeadStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const allowedStatuses = [
+      "new",
+      "contacted",
+      "follow_up",
+      "qualified",
+      "proposal_sent",
+      "negotiation",
+      "closed",
+      "lost"
+    ];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const [lead] = await db.query(
+      "SELECT * FROM leads WHERE id = ?",
+      [id]
+    );
+
+    if (lead.length === 0) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    await db.query(
+      "UPDATE leads SET status = ? WHERE id = ?",
+      [status, id]
+    );
+
+    res.json({ message: "Status updated successfully" });
+  } catch (err) {
+    console.error("Status update error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
