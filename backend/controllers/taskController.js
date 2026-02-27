@@ -5,10 +5,10 @@ const pool = require('../config/db');
 // =======================
 exports.createTask = async (req, res) => {
   try {
-    const { title, description, priority, due_date, assigned_to, client_id } = req.body;
+    const { title, description, priority, due_date, assigned_to, project_id } = req.body;
 
-    if (!title || !client_id) {
-      return res.status(400).json({ message: "Title and client_id required" });
+    if (!title || !project_id) {
+      return res.status(400).json({ message: "Title and project_id required" });
     }
 
     const workspaceId =
@@ -16,27 +16,30 @@ exports.createTask = async (req, res) => {
         ? req.user.id
         : req.user.owner_id;
 
-    // 🔐 Validate client belongs to workspace
-    const [client] = await pool.query(
-      "SELECT id FROM clients WHERE id = ? AND user_id = ?",
-      [client_id, workspaceId]
+    // 🔐 Validate project belongs to workspace
+    const [project] = await pool.query(
+      "SELECT id, client_id FROM projects WHERE id = ? AND workspace_id = ?",
+      [project_id, workspaceId]
     );
 
-    if (client.length === 0) {
-      return res.status(404).json({ message: "Client not found" });
+    if (project.length === 0) {
+      return res.status(404).json({ message: "Project not found" });
     }
+
+    const client_id = project[0].client_id;
 
     const [result] = await pool.query(
       `INSERT INTO tasks 
-       (title, description, priority, due_date, assigned_to, client_id, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+       (title, description, priority, due_date, assigned_to, client_id, project_id, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         title,
         description || null,
-        priority || 'medium',
+        priority || "medium",
         due_date || null,
         assigned_to || null,
         client_id,
+        project_id,
         workspaceId
       ]
     );
@@ -154,6 +157,30 @@ exports.deleteTask = async (req, res) => {
     }
 
     res.json({ message: "Task deleted successfully" });
+
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// GET TASKS BY PROJECT
+exports.getTasksByProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const workspaceId =
+      req.user.role === "admin"
+        ? req.user.id
+        : req.user.owner_id;
+
+    const [tasks] = await pool.query(
+      `SELECT * FROM tasks 
+       WHERE project_id = ? AND created_by = ?
+       ORDER BY created_at DESC`,
+      [projectId, workspaceId]
+    );
+
+    res.json(tasks);
 
   } catch (error) {
     res.status(500).json({ message: "Server error" });

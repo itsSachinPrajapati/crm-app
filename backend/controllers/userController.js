@@ -119,3 +119,29 @@ exports.changePassword = async (req, res) => {
       res.status(500).json({ message: "Server error" });
     }
   };
+
+  const pool = require("../config/db");
+
+  exports.getWorkspaceUsers = async (req, res) => {
+    try {
+      const workspaceId =
+        req.user.role === "admin"
+          ? req.user.id
+          : req.user.owner_id;
+  
+      const [users] = await pool.query(
+        `
+        SELECT id, name, email, role
+        FROM users
+        WHERE owner_id = ? OR id = ?
+        `,
+        [workspaceId, workspaceId]
+      );
+  
+      res.json(users);
+  
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Server error" });
+    }
+  };

@@ -9,4 +9,6 @@ router.put("/me", auth, userController.updateMe);
 router.get("/team", auth, adminOnly, userController.getTeam);
 router.post("/team", auth, adminOnly, userController.createEmployee);
 router.put("/change-password", auth, userController.changePassword);
+router.get("/", auth, userController.getWorkspaceUsers);
+
 module.exports = router;

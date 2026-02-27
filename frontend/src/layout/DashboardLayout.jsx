@@ -7,16 +7,12 @@ function DashboardLayout({ children }) {
   return (
     <div className="flex min-h-screen bg-[#070b14] text-slate-200">
 
+      {/* Sidebar */}
       <Sidebar expanded={expanded} setExpanded={setExpanded} />
 
-      <main
-        className={`
-          flex-1
-          transition-[margin] duration-300
-          ${expanded ? "ml-64" : "ml-20"}
-        `}
-      >
-        <div className="px-10 py-10">
+      {/* Main Content */}
+      <main className="flex-1 transition-all duration-300">
+        <div className="px-4 sm:px-6 lg:px-10 py-6">
           {children}
         </div>
       </main>

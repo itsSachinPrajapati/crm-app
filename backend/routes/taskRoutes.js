@@ -25,8 +25,17 @@ router.put(
   updateTaskValidation,
   validate,
   taskController.updateTask
+
 );
 
+router.get(
+  "/project/:projectId",
+   authMiddleware,
+   updateTaskValidation,
+   validate,
+   taskController.getTasksByProject
+  );
+  
 router.get('/', authMiddleware, taskController.getTasks);
 
 router.delete('/:id', authMiddleware, taskController.deleteTask);

@@ -8,6 +8,7 @@ import Clients from "./pages/Clients";
 import Tasks from "./pages/Tasks";
 import Settings from "./pages/Settings";
 import Projects from "./pages/Projects"
+import ProjectDetails from "./pages/ProjectDetails"
 
 <Route path="/settings" element={<Settings />} />
 function App() {
@@ -57,6 +58,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Projects />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/projects/:id"
+          element={
+            <ProtectedRoute>
+              <ProjectDetails />
             </ProtectedRoute>
           }
         />

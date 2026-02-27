@@ -105,6 +105,7 @@ SELECT * FROM leads;
 SELECT * FROM clients;
 SELECT * FROM tasks;
 select * from payments;
+select * from projects
 
 describe tasks;
 describe leads;
@@ -209,10 +210,44 @@ ALTER TABLE leads ADD COLUMN converted TINYINT(1) DEFAULT 0;
 SELECT id, status, converted FROM leads;
 
 insert into users (name,email,password,role) 
-values("Shubhangi Prajapati","bharati.9892@gmail.com","000sachin.@","employee");
+values("Shubhangi Prajapati","bharati.9892@gmail.com"," $2b$10$D2ZqHuuJj9qGkoMEAE3KJO7rYW4v1aamTDa3Eofk0o071iKMxSrMS","employee");
 
 ALTER TABLE users 
 ADD COLUMN owner_id INT NULL,
 ADD FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE;
 select * from users;
+select * from projects;
 drop table team;
+
+ALTER TABLE tasks
+ADD COLUMN project_id INT NOT NULL,
+ADD CONSTRAINT fk_tasks_project
+FOREIGN KEY (project_id)
+REFERENCES projects(id)
+ON DELETE CASCADE;
+
+UPDATE users 
+SET password = '$2b$10$5csOWkKE6xRDA5NBOJFJS.D40AaHpqQzYBPMDCj5A5W7tw/Nop/zS'
+WHERE email = 'sachinprajapati2622@gmail.com';
+
+
+delete from users where id=8;
+
+ALTER TABLE tasks 
+MODIFY project_id INT NOT NULL;
+
+ALTER TABLE tasks
+ADD CONSTRAINT fk_tasks_project
+FOREIGN KEY (project_id)
+REFERENCES projects(id)
+ON DELETE CASCADE;
+
+ALTER TABLE projects
+ADD COLUMN workspace_id INT NOT NULL;
+
+describe projects;
+
+ALTER TABLE projects
+MODIFY total_amount DECIMAL(10,2) NOT NULL,
+MODIFY advance_amount DECIMAL(10,2) NOT NULL,
+MODIFY remaining_amount DECIMAL(10,2) NOT NULL;

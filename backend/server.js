@@ -40,6 +40,23 @@ app.use("/api/dashboard", dashboardRoutes);
 const userRoutes = require("./routes/userRoutes")
 app.use("/api/users",userRoutes)
 
+const projectRoutes = require("./routes/projectRoutes")
+app.use("/api/projects",projectRoutes)
+
+const milestoneRoutes = require("./routes/milestoneRoutes");
+app.use("/api/projects/:projectId/milestones", milestoneRoutes);
+
+const memberRoutes = require("./routes/memberRoutes");
+app.use("/api/projects/:projectId/members", memberRoutes);
+
+const activityRoutes = require("./routes/activityRoutes");
+app.use("/api/projects/:projectId/activity", activityRoutes);
+
+const requirementRoutes = require("./routes/requirementRoutes");
+app.use("/api/projects/:projectId/requirements", requirementRoutes);
+
+const featureRoutes = require("./routes/featureRoutes");
+app.use("/api/projects/:projectId/features", featureRoutes);
 
 const authMiddleware = require("./middleware/authMiddleware");
 
