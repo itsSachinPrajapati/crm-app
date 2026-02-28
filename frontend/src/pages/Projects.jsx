@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// ─── Helpers ─────────────────────────────────────
+// ─── Helpers ─────────────────────────────
 
 const formatCurrency = (val) => {
   const n = parseFloat(val) || 0;
@@ -37,8 +37,6 @@ const formatDate = (dateStr) => {
   });
 };
 
-// ─── Main Component ──────────────────────────────
-
 function Projects() {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +48,6 @@ function Projects() {
     name: "",
     client_id: "",
     total_amount: "",
-    advance_amount: "",
     start_date: "",
     deadline: "",
   });
@@ -79,15 +76,8 @@ function Projects() {
       !form.name ||
       !form.client_id ||
       !form.total_amount ||
-      !form.advance_amount ||
       !form.start_date ||
       !form.deadline
-    )
-      return;
-
-    if (
-      Number(form.advance_amount) >
-      Number(form.total_amount)
     )
       return;
 
@@ -96,7 +86,6 @@ function Projects() {
       await api.post("/projects", {
         ...form,
         total_amount: Number(form.total_amount),
-        advance_amount: Number(form.advance_amount),
       });
 
       dialogRef.current?.close();
@@ -105,7 +94,6 @@ function Projects() {
         name: "",
         client_id: "",
         total_amount: "",
-        advance_amount: "",
         start_date: "",
         deadline: "",
       });
@@ -141,13 +129,9 @@ function Projects() {
   ).length;
 
   const totalRevenue = projects.reduce(
-    (sum, p) => sum + (parseFloat(p.total_amount) || 0),
+    (sum, p) => sum + (parseFloat(p.total_paid) || 0),
     0
   );
-
-  const remainingPreview =
-    (Number(form.total_amount) || 0) -
-    (Number(form.advance_amount) || 0);
 
   return (
     <DashboardLayout>
@@ -190,32 +174,18 @@ function Projects() {
       </div>
 
       {/* Table */}
-      <div className=" border border-white/5 rounded-2xl overflow-hidden">
+      <div className="border border-white/5 rounded-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-            <TableRow className="bg-white/5 text-slate-400 uppercase text-xs">
-                <TableHead className="px-6 py-4">
-                  Project
-                </TableHead>
-                <TableHead className="px-6 py-4">
-                  Client
-                </TableHead>
-                <TableHead className="px-6 py-4">
-                  Total
-                </TableHead>
-                <TableHead className="px-6 py-4">
-                  Advance
-                </TableHead>
-                <TableHead className="px-6 py-4">
-                  Remaining
-                </TableHead>
-                <TableHead className="px-6 py-4">
-                  Deadline
-                </TableHead>
-                <TableHead className="px-6 py-4">
-                  Status
-                </TableHead>
+              <TableRow className="bg-white/5 text-slate-400 uppercase text-xs">
+                <TableHead className="px-6 py-4">Project</TableHead>
+                <TableHead className="px-6 py-4">Client</TableHead>
+                <TableHead className="px-6 py-4">Total</TableHead>
+                <TableHead className="px-6 py-4">Paid</TableHead>
+                <TableHead className="px-6 py-4">Remaining</TableHead>
+                <TableHead className="px-6 py-4">Deadline</TableHead>
+                <TableHead className="px-6 py-4">Status</TableHead>
                 <TableHead className="px-6 py-4 text-right">
                   Action
                 </TableHead>
@@ -225,16 +195,17 @@ function Projects() {
             <TableBody>
               {projects.map((project) => (
                 <TableRow
-                key={project.id}
-                onClick={() => navigate(`/projects/${project.id}`)}
-                className="border-t border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
-              >
+                  key={project.id}
+                  onClick={() =>
+                    navigate(`/projects/${project.id}`)
+                  }
+                  className="border-t border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
+                >
                   <TableCell className="px-6 py-4 text-white font-medium">
                     {project.name}
                   </TableCell>
 
                   <TableCell className="px-6 py-4 text-slate-400">
-                 
                     {project.client_name || "—"}
                   </TableCell>
 
@@ -243,7 +214,7 @@ function Projects() {
                   </TableCell>
 
                   <TableCell className="px-6 py-4">
-                    ₹{formatCurrency(project.advance_amount)}
+                   ₹{formatCurrency(project.total_paid)}
                   </TableCell>
 
                   <TableCell className="px-6 py-4 text-amber-400 font-semibold">
@@ -259,7 +230,7 @@ function Projects() {
                   </TableCell>
 
                   <TableCell className="px-6 py-4 text-right">
-                  <button
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(project.id);
@@ -328,23 +299,6 @@ function Projects() {
               })
             }
           />
-
-          <Input
-            placeholder="Advance Amount (₹) *"
-            type="number"
-            value={form.advance_amount}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                advance_amount: e.target.value,
-              })
-            }
-          />
-
-          <div className="text-sm text-slate-400">
-            Remaining: ₹
-            {formatCurrency(remainingPreview)}
-          </div>
 
           <Input
             type="date"

@@ -12,38 +12,30 @@ const formatDate = (dateStr) => {
   });
 };
 
+const formatCurrency = (val) => {
+  const n = parseFloat(val) || 0;
+  return new Intl.NumberFormat("en-IN", {
+    maximumFractionDigits: 0,
+  }).format(n);
+};
+
 function ProjectDetail() {
   const { id } = useParams();
+
+  // STATES
   const [data, setData] = useState(null);
   const [visibleCount, setVisibleCount] = useState(5);
   const [loading, setLoading] = useState(true);
-  const [showMemberModal, setShowMemberModal] = useState(false);
-  const [workspaceUsers, setWorkspaceUsers] = useState([]);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentForm, setPaymentForm] = useState({
+    amount: "",
+    payment_type: "milestone",
+  });
+
   useEffect(() => {
     fetchProject();
   }, [id]);
-  
-  const fetchWorkspaceUsers = async () => {
-    try {
-      const res = await api.get("/users");
-      setWorkspaceUsers(res.data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-  
-  const handleAssignMember = async (user) => {
-    try {
-      await api.post(`/projects/${id}/members`, {
-        user_id: user.id,
-        role: "Contributor" 
-      });
-  
-      await fetchProject();
-    } catch (err) {
-      console.error(err);
-    }
-  };
+
   const fetchProject = async () => {
     try {
       const res = await api.get(`/projects/${id}/full`);
@@ -54,6 +46,7 @@ function ProjectDetail() {
       setLoading(false);
     }
   };
+
 
   if (loading) {
     return (
@@ -78,66 +71,48 @@ function ProjectDetail() {
     milestones = [],
     members = [],
     activity = [],
+    payments = [],
   } = data;
+
+  const handleAddPayment = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post("/payments", {
+        project_id: project.id,
+        amount: Number(paymentForm.amount),
+        payment_type: paymentForm.payment_type,
+      });
+
+      setShowPaymentModal(false);
+      setPaymentForm({ amount: "", payment_type: "milestone" });
+      fetchProject();
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <DashboardLayout>
       <div className="bg-gradient-to-br from-[#0b1220] via-[#0f1623] to-[#0a0f1a] p-6 text-white">
 
         {/* Header */}
-        <div className="flex justify-between items-center">
-          <h1 className="text-sm font-semibold text-slate-400">
-            Project Details
-          </h1>
-
-          <button
-            onClick={() => {
-              fetchWorkspaceUsers();
-              setShowMemberModal(true);
-            }}
-            className="px-3 py-1.5 text-xs bg-indigo-600 rounded-md hover:bg-indigo-700"
-          >
-            Add Member
-          </button>
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold">{project.name}</h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Client: {project.client_name} | Deadline:{" "}
+            {formatDate(project.deadline)}
+          </p>
         </div>
 
-        <div className="border-b border-white/10 my-4" />
+        {/* GRID 60 / 40 */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
 
-        {/* Project Title */}
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-semibold">
-              {project.name}
-            </h2>
-
-            <span className="px-2 py-0.5 text-xs rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              {project.status}
-            </span>
-          </div>
-
-          <div className="mt-1 text-xs text-slate-400">
-            Client: {project.client_name}
-            <span className="mx-2">|</span>
-            Created: {formatDate(project.created_at)}
-            <span className="mx-2">|</span>
-            Deadline: {formatDate(project.deadline)}
-          </div>
-        </div>
-
-        <div className="border-b border-white/10 my-5" />
-
-        {/* Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-
-          {/* LEFT */}
-          <div className="lg:col-span-7 space-y-5">
+          {/* LEFT 60% */}
+          <div className="lg:col-span-3 space-y-6">
 
             {/* Overview */}
-            <div className="bg-[#0f1623] border border-white/10 rounded-lg p-4">
-              <h3 className="text-sm font-semibold mb-3">
-                Project Overview
-              </h3>
-
+            <div className="bg-[#0f1623] border border-white/10 rounded-lg p-5">
+              <h3 className="text-sm font-semibold mb-3">Project Overview</h3>
               <div className="border-b border-white/10 mb-3" />
 
               <p className="text-sm text-slate-300">
@@ -147,7 +122,6 @@ function ProjectDetail() {
               <div className="border-b border-white/10 my-4" />
 
               <div className="grid grid-cols-2 gap-6 text-sm text-slate-300">
-                {/* Requirements */}
                 <div>
                   <p className="text-slate-400 mb-2 text-xs">Requirements</p>
                   <ul className="list-disc list-inside space-y-1">
@@ -160,7 +134,6 @@ function ProjectDetail() {
                   </ul>
                 </div>
 
-                {/* Features */}
                 <div>
                   <p className="text-slate-400 mb-2 text-xs">Features</p>
                   <ul className="list-disc list-inside space-y-1">
@@ -176,11 +149,10 @@ function ProjectDetail() {
             </div>
 
             {/* Milestones */}
-            <div className="bg-[#0f1623] border border-white/10 rounded-lg p-4">
+            <div className="bg-[#0f1623] border border-white/10 rounded-lg p-5">
               <h3 className="text-sm font-semibold mb-3">
                 Milestones & Deadlines
               </h3>
-
               <div className="border-b border-white/10 mb-3" />
 
               <table className="w-full text-sm">
@@ -191,7 +163,7 @@ function ProjectDetail() {
                     <th className="text-left py-1.5">Status</th>
                   </tr>
                 </thead>
-                <tbody className="text-slate-300">
+                <tbody>
                   {milestones.length === 0 && (
                     <tr>
                       <td colSpan={3} className="py-6 text-center text-slate-500">
@@ -204,19 +176,80 @@ function ProjectDetail() {
                     <tr key={m.id} className="border-t border-white/5">
                       <td className="py-2">{m.title}</td>
                       <td>{formatDate(m.due_date)}</td>
-                      <td>
-                        <span
-                          className={`px-2 py-0.5 text-xs rounded-full ${
-                            m.status === "completed"
-                              ? "bg-emerald-500/10 text-emerald-400"
-                              : m.status === "in_progress"
-                              ? "bg-amber-500/10 text-amber-400"
-                              : "bg-blue-500/10 text-blue-400"
-                          }`}
-                        >
-                          {m.status}
-                        </span>
+                      <td>{m.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Financial Summary */}
+            <div className="bg-[#0f1623] border border-white/10 rounded-lg p-5">
+              <h3 className="text-sm font-semibold mb-4">
+                Financial Summary
+              </h3>
+
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div>
+                  <p className="text-slate-400 text-xs">Total Budget</p>
+                  <p className="text-emerald-400 font-semibold">
+                    ₹{formatCurrency(project.total_amount)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-slate-400 text-xs">Total Paid</p>
+                  <p className="text-blue-400 font-semibold">
+                    ₹{formatCurrency(project.total_paid)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-slate-400 text-xs">Remaining</p>
+                  <p className="text-amber-400 font-semibold">
+                    ₹{formatCurrency(project.remaining_amount)}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment History */}
+            <div className="bg-[#0f1623] border border-white/10 rounded-lg p-5">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-semibold">Payment History</h3>
+
+                <button
+                  onClick={() => setShowPaymentModal(true)}
+                  className="px-3 py-1 text-xs bg-indigo-600 rounded hover:bg-indigo-700"
+                >
+                  + Add Payment
+                </button>
+              </div>
+
+              <table className="w-full text-sm">
+                <thead className="text-slate-400 text-xs">
+                  <tr>
+                    <th className="text-left py-1.5">Amount</th>
+                    <th className="text-left py-1.5">Type</th>
+                    <th className="text-left py-1.5">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="py-6 text-center text-slate-500">
+                        No payments recorded
                       </td>
+                    </tr>
+                  )}
+
+                  {payments.map((pay) => (
+                    <tr key={pay.id} className="border-t border-white/5">
+                      <td className="py-2 text-emerald-400">
+                        ₹{formatCurrency(pay.amount)}
+                      </td>
+                      <td className="capitalize">{pay.payment_type}</td>
+                      <td>{formatDate(pay.payment_date)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -224,13 +257,12 @@ function ProjectDetail() {
             </div>
           </div>
 
-          {/* RIGHT */}
-          <div className="lg:col-span-3 space-y-5">
+          {/* RIGHT 40% */}
+          <div className="lg:col-span-2 space-y-6">
 
-            {/* Team */}
-            <div className="bg-[#0f1623] border border-white/10 rounded-lg p-4">
+            {/* Team Members */}
+            <div className="bg-[#0f1623] border border-white/10 rounded-lg p-5">
               <h3 className="text-sm font-semibold mb-3">Team Members</h3>
-
               <div className="border-b border-white/10 mb-3" />
 
               <table className="w-full text-sm">
@@ -240,15 +272,7 @@ function ProjectDetail() {
                     <th className="text-left py-1.5">Role</th>
                   </tr>
                 </thead>
-                <tbody className="text-slate-300">
-                  {members.length === 0 && (
-                    <tr>
-                      <td colSpan={2} className="py-6 text-center text-slate-500">
-                        No members assigned
-                      </td>
-                    </tr>
-                  )}
-
+                <tbody>
                   {members.map((m) => (
                     <tr key={m.id} className="border-t border-white/5">
                       <td className="py-2">{m.name}</td>
@@ -260,100 +284,96 @@ function ProjectDetail() {
             </div>
 
             {/* Activity */}
-            <div className="bg-[#0f1623] border border-white/10 rounded-lg p-4">
+            <div className="bg-[#0f1623] border border-white/10 rounded-lg p-5">
               <h3 className="text-sm font-semibold mb-3">Activity Log</h3>
-
               <div className="border-b border-white/10 mb-3" />
 
               <div className="space-y-3 text-sm">
                 {activity.slice(0, visibleCount).map((a) => (
-                  <Activity
-                    key={a.id}
-                    name={a.user_name}
-                    text={a.action}
-                    time={formatDate(a.created_at)}
-                  />
+                  <div key={a.id}>
+                    <p>
+                      <span className="font-medium text-white">
+                        {a.user_name}
+                      </span>{" "}
+                      <span className="text-slate-300">{a.action}</span>
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {formatDate(a.created_at)}
+                    </p>
+                    <div className="border-b border-white/5 mt-2" />
+                  </div>
                 ))}
 
                 {visibleCount < activity.length && (
                   <button
                     onClick={() => setVisibleCount((prev) => prev + 5)}
-                    className="text-indigo-400 text-sm hover:text-indigo-300 mt-2"
+                    className="text-indigo-400 text-sm hover:text-indigo-300"
                   >
                     Load More
                   </button>
                 )}
               </div>
             </div>
-            {showMemberModal && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-                <div className="bg-[#0f1623] border border-white/10 rounded-lg w-[400px] p-6">
-                  <h3 className="text-sm font-semibold mb-4">Assign Member</h3>
-
-                  <div className="space-y-3 max-h-80 overflow-y-auto">
-                    {workspaceUsers
-                      .filter((user) => user.role !== "admin")
-                      .map((user) => {
-                      const alreadyAssigned = members.some(
-                        (m) => m.user_id === user.id
-                      );
-
-                      return (
-                        <div
-                          key={user.id}
-                          className="flex justify-between items-center bg-white/5 px-3 py-2 rounded"
-                        >
-                          <div>
-                            <p className="text-sm">{user.name}</p>
-                            <p className="text-xs text-slate-400">{user.role}</p>
-                          </div>
-
-                          {alreadyAssigned ? (
-                            <span className="text-xs text-emerald-400">
-                              Assigned
-                            </span>
-                          ) : (
-                            <button
-                              onClick={() => handleAssignMember(user)}
-                              className="text-xs text-indigo-400 hover:text-indigo-300"
-                            >
-                              Assign
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="mt-4 text-right">
-                    <button
-                      onClick={() => setShowMemberModal(false)}
-                      className="text-xs text-slate-400 hover:text-white"
-                    >
-                      Close
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
           </div>
         </div>
+
+        {/* Payment Modal */}
+        {showPaymentModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-[#0f1623] border border-white/10 rounded-lg w-[400px] p-6">
+              <h3 className="text-sm font-semibold mb-4">Add Payment</h3>
+
+              <form onSubmit={handleAddPayment} className="space-y-4">
+                <input
+                  type="number"
+                  placeholder="Amount"
+                  value={paymentForm.amount}
+                  onChange={(e) =>
+                    setPaymentForm({
+                      ...paymentForm,
+                      amount: e.target.value,
+                    })
+                  }
+                  className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm"
+                  required
+                />
+
+                <select
+                  value={paymentForm.payment_type}
+                  onChange={(e) =>
+                    setPaymentForm({
+                      ...paymentForm,
+                      payment_type: e.target.value,
+                    })
+                  }
+                  className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm"
+                >
+                  <option value="advance">Advance</option>
+                  <option value="milestone">Milestone</option>
+                </select>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowPaymentModal(false)}
+                    className="text-xs text-slate-400"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="px-3 py-1 text-xs bg-indigo-600 rounded hover:bg-indigo-700"
+                  >
+                    Add
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </DashboardLayout>
-  );
-}
-
-function Activity({ name, text, time }) {
-  return (
-    <div>
-      <p className="text-sm">
-        <span className="font-medium text-white">{name}</span>{" "}
-        <span className="text-slate-300">{text}</span>
-      </p>
-      <p className="text-xs text-slate-500">{time}</p>
-      <div className="border-b border-white/5 mt-2" />
-    </div>
   );
 }
 

@@ -58,6 +58,9 @@ app.use("/api/projects/:projectId/requirements", requirementRoutes);
 const featureRoutes = require("./routes/featureRoutes");
 app.use("/api/projects/:projectId/features", featureRoutes);
 
+const paymentsRoutes = require("./routes/paymentsRoutes");
+app.use("/api/payments", paymentsRoutes);
+
 const authMiddleware = require("./middleware/authMiddleware");
 
 

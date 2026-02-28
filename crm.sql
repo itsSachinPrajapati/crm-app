@@ -251,3 +251,86 @@ ALTER TABLE projects
 MODIFY total_amount DECIMAL(10,2) NOT NULL,
 MODIFY advance_amount DECIMAL(10,2) NOT NULL,
 MODIFY remaining_amount DECIMAL(10,2) NOT NULL;
+
+
+CREATE TABLE project_requirements (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  project_id INT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  status ENUM('pending','in_progress','completed') DEFAULT 'pending',
+  created_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE project_members (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  project_id INT NOT NULL,
+  user_id INT NOT NULL,
+  role VARCHAR(100) DEFAULT 'member',
+  assigned_by INT NOT NULL,
+  assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE KEY unique_project_user (project_id, user_id),
+
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE project_activity_logs (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  project_id INT NOT NULL,
+  user_id INT NOT NULL,
+  action VARCHAR(255) NOT NULL,
+  metadata JSON NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE project_milestones (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  project_id INT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NULL,
+  due_date DATE NULL,
+  status ENUM('pending','in_progress','completed') DEFAULT 'pending',
+  created_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+ALTER TABLE projects
+MODIFY owner_id INT NOT NULL;
+
+ALTER TABLE projects
+ADD CONSTRAINT fk_projects_owner
+FOREIGN KEY (owner_id)
+REFERENCES users(id)
+ON DELETE CASCADE;
+
+ALTER TABLE projects
+ADD COLUMN owner_id INT NULL AFTER id;
+
+CREATE TABLE project_features (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  project_id INT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  created_by INT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+
+
+DESCRIBE projects;
+select * from projects;
