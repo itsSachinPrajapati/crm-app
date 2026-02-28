@@ -333,4 +333,4 @@ CREATE TABLE project_features (
 
 
 DESCRIBE projects;
-select * from projects;
+select * from payments;

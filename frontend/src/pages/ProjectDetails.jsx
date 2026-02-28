@@ -22,15 +22,20 @@ const formatCurrency = (val) => {
 function ProjectDetail() {
   const { id } = useParams();
 
-  // STATES
   const [data, setData] = useState(null);
-  const [visibleCount, setVisibleCount] = useState(5);
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(5);
+
+  // Payment modal
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
     payment_type: "milestone",
   });
+
+  // Member modal
+  const [showMemberModal, setShowMemberModal] = useState(false);
+  const [workspaceUsers, setWorkspaceUsers] = useState([]);
 
   useEffect(() => {
     fetchProject();
@@ -47,6 +52,14 @@ function ProjectDetail() {
     }
   };
 
+  const fetchWorkspaceUsers = async () => {
+    try {
+      const res = await api.get("/users");
+      setWorkspaceUsers(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   if (loading) {
     return (
@@ -74,6 +87,9 @@ function ProjectDetail() {
     payments = [],
   } = data;
 
+  // =========================
+  // PAYMENT
+  // =========================
   const handleAddPayment = async (e) => {
     e.preventDefault();
     try {
@@ -85,6 +101,21 @@ function ProjectDetail() {
 
       setShowPaymentModal(false);
       setPaymentForm({ amount: "", payment_type: "milestone" });
+      fetchProject();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // =========================
+  // MEMBER ASSIGN
+  // =========================
+  const handleAssignMember = async (user) => {
+    try {
+      await api.post(`/projects/${id}/members`, {
+        user_id: user.id,
+        role: user.role || "Member",
+      });
       fetchProject();
     } catch (err) {
       console.error(err);
@@ -114,7 +145,6 @@ function ProjectDetail() {
             <div className="bg-[#0f1623] border border-white/10 rounded-lg p-5">
               <h3 className="text-sm font-semibold mb-3">Project Overview</h3>
               <div className="border-b border-white/10 mb-3" />
-
               <p className="text-sm text-slate-300">
                 {project.description || "No description added."}
               </p>
@@ -125,9 +155,6 @@ function ProjectDetail() {
                 <div>
                   <p className="text-slate-400 mb-2 text-xs">Requirements</p>
                   <ul className="list-disc list-inside space-y-1">
-                    {requirements.length === 0 && (
-                      <li className="text-slate-500">No requirements yet</li>
-                    )}
                     {requirements.map((r) => (
                       <li key={r.id}>{r.title}</li>
                     ))}
@@ -137,9 +164,6 @@ function ProjectDetail() {
                 <div>
                   <p className="text-slate-400 mb-2 text-xs">Features</p>
                   <ul className="list-disc list-inside space-y-1">
-                    {features.length === 0 && (
-                      <li className="text-slate-500">No features yet</li>
-                    )}
                     {features.map((f) => (
                       <li key={f.id}>{f.title}</li>
                     ))}
@@ -150,30 +174,20 @@ function ProjectDetail() {
 
             {/* Milestones */}
             <div className="bg-[#0f1623] border border-white/10 rounded-lg p-5">
-              <h3 className="text-sm font-semibold mb-3">
-                Milestones & Deadlines
-              </h3>
+              <h3 className="text-sm font-semibold mb-3">Milestones & Deadlines</h3>
               <div className="border-b border-white/10 mb-3" />
 
-              <table className="w-full text-sm">
+              <table className="w-full text-sm text-center border-collapse">
                 <thead className="text-slate-400 text-xs">
                   <tr>
-                    <th className="text-left py-1.5">Milestone</th>
-                    <th className="text-left py-1.5">Due</th>
-                    <th className="text-left py-1.5">Status</th>
+                    <th className="py-2 border-b border-white/10">Milestone</th>
+                    <th className="border-b border-white/10">Due</th>
+                    <th className="border-b border-white/10">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {milestones.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="py-6 text-center text-slate-500">
-                        No milestones yet
-                      </td>
-                    </tr>
-                  )}
-
                   {milestones.map((m) => (
-                    <tr key={m.id} className="border-t border-white/5">
+                    <tr key={m.id} className="border-b border-white/5">
                       <td className="py-2">{m.title}</td>
                       <td>{formatDate(m.due_date)}</td>
                       <td>{m.status}</td>
@@ -185,11 +199,9 @@ function ProjectDetail() {
 
             {/* Financial Summary */}
             <div className="bg-[#0f1623] border border-white/10 rounded-lg p-5">
-              <h3 className="text-sm font-semibold mb-4">
-                Financial Summary
-              </h3>
+              <h3 className="text-sm font-semibold mb-4">Financial Summary</h3>
 
-              <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-3 gap-4 text-sm text-center">
                 <div>
                   <p className="text-slate-400 text-xs">Total Budget</p>
                   <p className="text-emerald-400 font-semibold">
@@ -217,7 +229,6 @@ function ProjectDetail() {
             <div className="bg-[#0f1623] border border-white/10 rounded-lg p-5">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-sm font-semibold">Payment History</h3>
-
                 <button
                   onClick={() => setShowPaymentModal(true)}
                   className="px-3 py-1 text-xs bg-indigo-600 rounded hover:bg-indigo-700"
@@ -226,25 +237,17 @@ function ProjectDetail() {
                 </button>
               </div>
 
-              <table className="w-full text-sm">
+              <table className="w-full text-sm text-center border-collapse">
                 <thead className="text-slate-400 text-xs">
                   <tr>
-                    <th className="text-left py-1.5">Amount</th>
-                    <th className="text-left py-1.5">Type</th>
-                    <th className="text-left py-1.5">Date</th>
+                    <th className="py-2 border-b border-white/10">Amount</th>
+                    <th className="border-b border-white/10">Type</th>
+                    <th className="border-b border-white/10">Date</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {payments.length === 0 && (
-                    <tr>
-                      <td colSpan={3} className="py-6 text-center text-slate-500">
-                        No payments recorded
-                      </td>
-                    </tr>
-                  )}
-
                   {payments.map((pay) => (
-                    <tr key={pay.id} className="border-t border-white/5">
+                    <tr key={pay.id} className="border-b border-white/5">
                       <td className="py-2 text-emerald-400">
                         ₹{formatCurrency(pay.amount)}
                       </td>
@@ -262,19 +265,39 @@ function ProjectDetail() {
 
             {/* Team Members */}
             <div className="bg-[#0f1623] border border-white/10 rounded-lg p-5">
-              <h3 className="text-sm font-semibold mb-3">Team Members</h3>
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-sm font-semibold">Team Members</h3>
+                <button
+                  onClick={() => {
+                    fetchWorkspaceUsers();
+                    setShowMemberModal(true);
+                  }}
+                  className="px-3 py-1 text-xs bg-indigo-600 rounded hover:bg-indigo-700"
+                >
+                  + Add Member
+                </button>
+              </div>
+
               <div className="border-b border-white/10 mb-3" />
 
-              <table className="w-full text-sm">
+              <table className="w-full text-sm text-center border-collapse">
                 <thead className="text-slate-400 text-xs">
                   <tr>
-                    <th className="text-left py-1.5">Name</th>
-                    <th className="text-left py-1.5">Role</th>
+                    <th className="py-2 border-b border-white/10">Name</th>
+                    <th className="border-b border-white/10">Role</th>
                   </tr>
                 </thead>
                 <tbody>
+                  {members.length === 0 && (
+                    <tr>
+                      <td colSpan={2} className="py-6 text-center text-slate-500">
+                        No members assigned
+                      </td>
+                    </tr>
+                  )}
+
                   {members.map((m) => (
-                    <tr key={m.id} className="border-t border-white/5">
+                    <tr key={m.id} className="border-b border-white/5">
                       <td className="py-2">{m.name}</td>
                       <td>{m.role}</td>
                     </tr>
@@ -303,72 +326,60 @@ function ProjectDetail() {
                     <div className="border-b border-white/5 mt-2" />
                   </div>
                 ))}
-
-                {visibleCount < activity.length && (
-                  <button
-                    onClick={() => setVisibleCount((prev) => prev + 5)}
-                    className="text-indigo-400 text-sm hover:text-indigo-300"
-                  >
-                    Load More
-                  </button>
-                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Payment Modal */}
-        {showPaymentModal && (
+        {/* MEMBER MODAL */}
+        {showMemberModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-[#0f1623] border border-white/10 rounded-lg w-[400px] p-6">
-              <h3 className="text-sm font-semibold mb-4">Add Payment</h3>
+              <h3 className="text-sm font-semibold mb-4">Assign Member</h3>
 
-              <form onSubmit={handleAddPayment} className="space-y-4">
-                <input
-                  type="number"
-                  placeholder="Amount"
-                  value={paymentForm.amount}
-                  onChange={(e) =>
-                    setPaymentForm({
-                      ...paymentForm,
-                      amount: e.target.value,
-                    })
-                  }
-                  className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm"
-                  required
-                />
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {workspaceUsers
+                  .filter((user) => user.role !== "admin")
+                  .map((user) => {
+                    const alreadyAssigned = members.some(
+                      (m) => m.user_id === user.id
+                    );
 
-                <select
-                  value={paymentForm.payment_type}
-                  onChange={(e) =>
-                    setPaymentForm({
-                      ...paymentForm,
-                      payment_type: e.target.value,
-                    })
-                  }
-                  className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm"
+                    return (
+                      <div
+                        key={user.id}
+                        className="flex justify-between items-center bg-white/5 px-3 py-2 rounded"
+                      >
+                        <div>
+                          <p className="text-sm">{user.name}</p>
+                          <p className="text-xs text-slate-400">{user.role}</p>
+                        </div>
+
+                        {alreadyAssigned ? (
+                          <span className="text-xs text-emerald-400">
+                            Assigned
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => handleAssignMember(user)}
+                            className="text-xs text-indigo-400 hover:text-indigo-300"
+                          >
+                            Assign
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+
+              <div className="mt-4 text-right">
+                <button
+                  onClick={() => setShowMemberModal(false)}
+                  className="text-xs text-slate-400"
                 >
-                  <option value="advance">Advance</option>
-                  <option value="milestone">Milestone</option>
-                </select>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowPaymentModal(false)}
-                    className="text-xs text-slate-400"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="submit"
-                    className="px-3 py-1 text-xs bg-indigo-600 rounded hover:bg-indigo-700"
-                  >
-                    Add
-                  </button>
-                </div>
-              </form>
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
