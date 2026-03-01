@@ -3,13 +3,9 @@ import DashboardLayout from "../layout/DashboardLayout";
 import api from "../services/api";
 import { useRef } from "react";
 
-// MUI Icons only — no MUI components with sx props
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
 
-import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
-import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
-import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import SendOutlinedIcon from "@mui/icons-material/SendOutlined";
@@ -752,151 +748,151 @@ export default function Leads() {
 
   return (
     <DashboardLayout>
-      <div className="min-h-screen px-2 py-2 space-y-10">
+        <div className="min-h-screen px-2 py-2 space-y-10">
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Leads</h1>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-white text-black hover:bg-slate-200 transition-all duration-200"
-            >
-              <AddIcon sx={{ fontSize: 16 }} />
-              New Lead
-            </button>
-          </div>
-        </div>
-
-        {/* Stat Cards */}
-        <div className="grid grid-cols-5 gap-6">
-          {STAT_CARDS.map(({ key, label, Icon }) => (
-            <div
-              key={key}
-              className="
-                bg-[#0c1320]
-                border border-white/5
-                rounded-2xl
-                px-6 py-6
-                flex items-center justify-between
-                transition-all duration-300
-                hover:border-white/10
-                hover:shadow-lg
-              "
-            >
-              <div>
-                <p className="text-xs text-slate-500 mb-1 tracking-wide">{label}</p>
-                <p className="text-3xl font-semibold text-white tracking-tight">
-                  {String(countByStatus(key)).padStart(2, "0")}
-                </p>
-              </div>
-              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400">
-                {/* ✅ MUI icons use sx for sizing, not size prop */}
-                <Icon sx={{ fontSize: 18 }} />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Tabs + Filters */}
-        <div className="border-b border-white/5 pb-3">
+          {/* Header */}
           <div className="flex items-center justify-between">
-
-            {/* Tabs */}
-            <div className="flex items-center">
-              {FILTER_TABS.map((tab, i) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(i)}
-                  className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all ${
-                    activeTab === i
-                      ? "border-white text-white"
-                      : "border-transparent text-slate-500 hover:text-slate-300"
-                  }`}
-                >
-                  {tab}
-                  <span className="ml-1 text-xs opacity-50">
-                    {tabCount(tab, i)}
-                  </span>
-                </button>
-              ))}
+            <h1 className="text-2xl font-semibold tracking-tight text-white">Leads</h1>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-white text-black hover:bg-slate-200 transition-all duration-200"
+              >
+                <AddIcon sx={{ fontSize: 16 }} />
+                New Lead
+              </button>
             </div>
+          </div>
 
-            {/* Search + Filters */}
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <SearchIcon
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"
-                  sx={{ fontSize: 14 }}
-                />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search leads"
-                  className="bg-[#141b26] border border-white/5 rounded-lg text-slate-300 text-sm pl-9 pr-4 py-2 w-56 outline-none focus:border-white/20 transition-all placeholder:text-slate-600"
-                />
+          {/* Stat Cards */}
+          <div className="grid grid-cols-5 gap-6">
+            {STAT_CARDS.map(({ key, label, Icon }) => (
+              <div
+                key={key}
+                className="
+                  bg-[#0c1320]
+                  border border-white/5
+                  rounded-2xl
+                  px-6 py-6
+                  flex items-center justify-between
+                  transition-all duration-300
+                  hover:border-white/10
+                  hover:shadow-lg
+                "
+              >
+                <div>
+                  <p className="text-xs text-slate-500 mb-1 tracking-wide">{label}</p>
+                  <p className="text-3xl font-semibold text-white tracking-tight">
+                    {String(countByStatus(key)).padStart(2, "0")}
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400">
+                  {/* ✅ MUI icons use sx for sizing, not size prop */}
+                  <Icon sx={{ fontSize: 18 }} />
+                </div>
               </div>
-
-              <select
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="bg-[#141b26] border border-white/5 rounded-lg text-sm text-slate-300 px-3 py-2 focus:border-white/20 outline-none"
-              >
-                <option value="all">All Time</option>
-                <option value="today">Today</option>
-                <option value="yesterday">Yesterday</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-                <option value="90days">Last 90 Days</option>
-              </select>
-
-              <select
-                value={serviceSort}
-                onChange={(e) => setServiceSort(e.target.value)}
-                className="bg-[#141b26] border border-white/5 rounded-lg text-sm text-slate-300 px-3 py-2 focus:border-white/20 outline-none"
-              >
-                <option value="all">All Services</option>
-                <option value="Web Design">Web Design</option>
-                <option value="App Design">App Design</option>
-                <option value="Logo Design">Logo Design</option>
-                <option value="Design System">Design System</option>
-              </select>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Lead Cards */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-6 h-6 rounded-full border-2 border-slate-700 border-t-blue-500 animate-spin" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex items-center justify-center py-20 text-slate-600 text-sm">
-            No leads found
-          </div>
-        ) : (
-          <div className="grid grid-cols-4 gap-4">
-            {filtered.map((lead) => (
-              <LeadCard
-                key={lead.id}
-                lead={lead}
-                onConverted={(id) =>
-                  setLeads((prev) => prev.filter((l) => l.id !== id))
-                }
-              />
             ))}
           </div>
-        )}
 
-      </div>
+          {/* Tabs + Filters */}
+          <div className="border-b border-white/5 pb-3">
+            <div className="flex items-center justify-between">
 
-      {/* ✅ Modal with fixed overlay */}
-      <NewLeadModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onCreated={fetchLeads}
-      />
+              {/* Tabs */}
+              <div className="flex items-center">
+                {FILTER_TABS.map((tab, i) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(i)}
+                    className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all ${
+                      activeTab === i
+                        ? "border-white text-white"
+                        : "border-transparent text-slate-500 hover:text-slate-300"
+                    }`}
+                  >
+                    {tab}
+                    <span className="ml-1 text-xs opacity-50">
+                      {tabCount(tab, i)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Search + Filters */}
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <SearchIcon
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"
+                    sx={{ fontSize: 14 }}
+                  />
+                  <input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search leads"
+                    className="bg-[#141b26] border border-white/5 rounded-lg text-slate-300 text-sm pl-9 pr-4 py-2 w-56 outline-none focus:border-white/20 transition-all placeholder:text-slate-600"
+                  />
+                </div>
+
+                <select
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                  className="bg-[#141b26] border border-white/5 rounded-lg text-sm text-slate-300 px-3 py-2 focus:border-white/20 outline-none"
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="week">This Week</option>
+                  <option value="month">This Month</option>
+                  <option value="90days">Last 90 Days</option>
+                </select>
+
+                <select
+                  value={serviceSort}
+                  onChange={(e) => setServiceSort(e.target.value)}
+                  className="bg-[#141b26] border border-white/5 rounded-lg text-sm text-slate-300 px-3 py-2 focus:border-white/20 outline-none"
+                >
+                  <option value="all">All Services</option>
+                  <option value="Web Design">Web Design</option>
+                  <option value="App Design">App Design</option>
+                  <option value="Logo Design">Logo Design</option>
+                  <option value="Design System">Design System</option>
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Lead Cards */}
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-6 h-6 rounded-full border-2 border-slate-700 border-t-blue-500 animate-spin" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex items-center justify-center py-20 text-slate-600 text-sm">
+              No leads found
+            </div>
+          ) : (
+            <div className="grid grid-cols-4 gap-4">
+              {filtered.map((lead) => (
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  onConverted={(id) =>
+                    setLeads((prev) => prev.filter((l) => l.id !== id))
+                  }
+                />
+              ))}
+            </div>
+          )}
+
+        </div>
+
+        {/* ✅ Modal with fixed overlay */}
+        <NewLeadModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          onCreated={fetchLeads}
+        />
     </DashboardLayout>
   );
 }

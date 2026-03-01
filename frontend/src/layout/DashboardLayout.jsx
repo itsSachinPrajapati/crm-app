@@ -1,24 +1,23 @@
-import { useState } from "react";
 import Sidebar from "./Sidebar";
 
-function DashboardLayout({ children }) {
-  const [expanded, setExpanded] = useState(false);
-
+export default function DashboardLayout({ children }) {
   return (
-    <div className="flex min-h-screen bg-[#070b14] text-slate-200">
+    <div className="flex h-screen bg-[#070f1a]">
 
       {/* Sidebar */}
-      <Sidebar expanded={expanded} setExpanded={setExpanded} />
+      <div className="h-screen">
+        <Sidebar />
+      </div>
 
-      {/* Main Content */}
-      <main className="flex-1 transition-all duration-300">
-        <div className="px-4 sm:px-6 lg:px-10 py-6">
+      {/* Main Content Wrapper */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+
+        {/* Scrollable Content */}
+        <main className="flex-1 overflow-y-auto px-6 py-6">
           {children}
-        </div>
-      </main>
+        </main>
 
+      </div>
     </div>
   );
 }
-
-export default DashboardLayout;
