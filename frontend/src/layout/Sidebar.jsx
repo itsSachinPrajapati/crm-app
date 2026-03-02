@@ -3,110 +3,63 @@ import {
   Users,
   Building2,
   Component,
-  Settings
+  Settings,
 } from "lucide-react";
-import { NavLink } from "react-router-dom";
-import { Link } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 
 function Sidebar() {
   const menuItems = [
     { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { name: "Leads", icon: Users, path: "/leads" },
-    { name: "Clients", icon: Building2, path: "/clients" },
-    { name: "Projects", icon: Component, path: "/projects" }
+    { name: "Leads",     icon: Users,           path: "/leads" },
+    { name: "Clients",   icon: Building2,        path: "/clients" },
+    { name: "Projects",  icon: Component,        path: "/projects" },
   ];
 
   const bottomItems = [
-    { name: "Settings", icon: Settings, path: "/settings" }
+    { name: "Settings", icon: Settings, path: "/settings" },
   ];
 
+  const navCls = ({ isActive }) =>
+    `group relative flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-150 ${
+      isActive
+        ? "bg-indigo-600/20 text-indigo-400 shadow-inner shadow-indigo-500/10"
+        : "text-slate-600 hover:text-slate-200 hover:bg-white/[0.06]"
+    }`;
+
+  const Tooltip = ({ label }) => (
+    <span className="absolute left-full ml-3.5 px-2.5 py-1.5 bg-[#0d1117] border border-white/[0.08] text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 translate-x-1 group-hover:translate-x-0 transition-all duration-200 whitespace-nowrap pointer-events-none shadow-xl z-50">
+      {label}
+    </span>
+  );
+
   return (
-    <div className="
-      w-15
-      h-screen
-      bg-[#0b111c]
-      border-r border-white/5
-      text-slate-400
-      flex flex-col
-    ">
+    <div className="w-[60px] h-screen bg-[#080c12] border-r border-white/[0.06] text-slate-400 flex flex-col flex-shrink-0">
 
       {/* Logo */}
-      <div className="h-20 flex items-center justify-center border-b border-neutral-800">
-      <Link to="/dashboard">CRM</Link>
+      <div className="h-16 flex items-center justify-center border-b border-white/[0.06]">
+        <Link to="/dashboard">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-md shadow-indigo-500/20 hover:scale-105 transition-transform duration-150">
+            <span className="text-white text-xs font-bold">A</span>
+          </div>
+        </Link>
       </div>
 
-      {/* Main Menu */}
-      <div className="flex-1 px-2 py-6 space-y-2">
-        {menuItems.map((item, index) => (
-          <NavLink
-            key={index}
-            to={item.path}
-            className={({ isActive }) =>
-              `group relative flex items-center justify-center px-3 py-3 rounded-lg transition ${
-                isActive
-                  ? "bg-white/5 text-white"
-                  : "hover:bg-white/5 hover:text-white"
-              }`
-            }
-          >
-            <item.icon size={20} />
-
-            {/* Tooltip */}
-            <span
-              className="
-                absolute left-full ml-3
-                px-3 py-1.5
-                bg-[#111827]
-                text-white text-xs
-                rounded-md
-                opacity-0
-                group-hover:opacity-100
-                translate-x-2
-                group-hover:translate-x-0
-                transition-all duration-200
-                whitespace-nowrap
-                pointer-events-none
-                shadow-lg
-                z-50
-              "
-            >
-              {item.name}
-            </span>
+      {/* Main Nav */}
+      <div className="flex-1 flex flex-col items-center py-5 gap-1.5">
+        {menuItems.map((item) => (
+          <NavLink key={item.path} to={item.path} className={navCls}>
+            <item.icon size={18} strokeWidth={1.8} />
+            <Tooltip label={item.name} />
           </NavLink>
         ))}
       </div>
 
-      {/* Bottom Section */}
-      <div className="px-2 pb-6 space-y-2 border-t border-neutral-800 pt-4">
-        {bottomItems.map((item, index) => (
-          <NavLink
-            key={index}
-            to={item.path}
-            className="group relative flex items-center justify-center px-3 py-3 rounded-lg hover:bg-white/5 hover:text-white transition"
-          >
-            <item.icon size={20} />
-
-            {/* Tooltip */}
-            <span
-              className="
-                absolute left-full ml-3
-                px-3 py-1.5
-                bg-[#111827]
-                text-white text-xs
-                rounded-md
-                opacity-0
-                group-hover:opacity-100
-                translate-x-2
-                group-hover:translate-x-0
-                transition-all duration-200
-                whitespace-nowrap
-                pointer-events-none
-                shadow-lg
-                z-50
-              "
-            >
-              {item.name}
-            </span>
+      {/* Bottom Nav */}
+      <div className="flex flex-col items-center pb-5 gap-1.5 border-t border-white/[0.06] pt-4">
+        {bottomItems.map((item) => (
+          <NavLink key={item.path} to={item.path} className={navCls}>
+            <item.icon size={18} strokeWidth={1.8} />
+            <Tooltip label={item.name} />
           </NavLink>
         ))}
       </div>

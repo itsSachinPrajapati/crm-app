@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, memo, useCallback } from "react";
 import {
   AreaChart,
@@ -11,10 +10,9 @@ import {
 } from "recharts";
 import api from "../services/api";
 import DashboardLayout from "../layout/DashboardLayout";
-import { PieChart, Pie,Cell } from "recharts";
+import { PieChart, Pie, Cell } from "recharts";
 
-
-// ─── constants ────────────────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const PIPELINE_META = {
   new:        { color: "#60a5fa", label: "New" },
@@ -25,20 +23,22 @@ const PIPELINE_META = {
 };
 
 const STATUS_BADGE = {
-  active:      "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
-  "in progress":"bg-blue-500/20 text-blue-400 border border-blue-500/30",
-  "on hold":   "bg-amber-500/20 text-amber-400 border border-amber-500/30",
-  completed:   "bg-violet-500/20 text-violet-400 border border-violet-500/30",
-  new:         "bg-blue-500/20 text-blue-400 border border-blue-500/30",
-  contacted:   "bg-purple-500/20 text-purple-400 border border-purple-500/30",
-  qualified:   "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30",
-  closed:      "bg-amber-500/20 text-amber-400 border border-amber-500/30",
-  lost:        "bg-red-500/20 text-red-400 border border-red-500/30",
+  active:       "bg-emerald-400/10 text-emerald-400",
+  "in progress":"bg-blue-400/10 text-blue-400",
+  "on hold":    "bg-amber-400/10 text-amber-400",
+  completed:    "bg-violet-400/10 text-violet-400",
+  new:          "bg-blue-400/10 text-blue-400",
+  contacted:    "bg-purple-400/10 text-purple-400",
+  qualified:    "bg-emerald-400/10 text-emerald-400",
+  closed:       "bg-amber-400/10 text-amber-400",
+  lost:         "bg-red-400/10 text-red-400",
 };
 
-// ─── pure helpers (no re-creation on render) ──────────────────────────────────
-
-
+const STATUS_DOT = {
+  active: "bg-emerald-400", "in progress": "bg-blue-400", "on hold": "bg-amber-400",
+  completed: "bg-violet-400", new: "bg-blue-400", contacted: "bg-purple-400",
+  qualified: "bg-emerald-400", closed: "bg-amber-400", lost: "bg-red-400",
+};
 
 function fmtINR(n) {
   return new Intl.NumberFormat("en-IN").format(Number(n));
@@ -49,530 +49,381 @@ function fmtMonth(ym) {
   return new Date(y, m - 1).toLocaleString("en", { month: "short" });
 }
 
-
-// ─── tiny sub-components (memo so they don't re-render unless props change) ───
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 const StatusBadge = memo(({ status }) => {
   const key = status?.toLowerCase();
-  const cls = STATUS_BADGE[key] || "bg-slate-500/20 text-slate-400 border border-slate-500/30";
+  const cls = STATUS_BADGE[key] || "bg-slate-400/10 text-slate-400";
+  const dot = STATUS_DOT[key] || "bg-slate-400";
   const label = PIPELINE_META[key]?.label || (key ? key.charAt(0).toUpperCase() + key.slice(1) : "—");
   return (
-    <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-semibold ${cls}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
       {label}
     </span>
   );
 });
 
-// ─── Revenue chart ─────────────────────────────────────────────────────────────
+// ─── Revenue Chart ────────────────────────────────────────────────────────────
 
 const RevenueChart = memo(({ revenueOverview }) => {
   const chartData = useMemo(
-    () =>
-      revenueOverview.map((r) => ({
-        month: fmtMonth(r.month),
-        revenue: Number(r.total),
-      })),
+    () => revenueOverview.map((r) => ({ month: fmtMonth(r.month), revenue: Number(r.total) })),
     [revenueOverview]
   );
 
   return (
-    <ResponsiveContainer width="100%" height={160}>
+    <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={chartData} margin={{ top: 8, right: 8, bottom: 0, left: -10 }}>
         <defs>
           <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+            <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.35} />
+            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-        <XAxis dataKey="month" tick={{ fill: "#64748b", fontSize: 11 }} axisLine={false} tickLine={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
+        <XAxis dataKey="month" tick={{ fill: "#475569", fontSize: 11 }} axisLine={false} tickLine={false} />
         <YAxis
-          tick={{ fill: "#64748b", fontSize: 10 }}
+          tick={{ fill: "#475569", fontSize: 10 }}
           axisLine={false}
           tickLine={false}
           tickFormatter={(v) => `${(v / 1000).toFixed(0)}K`}
         />
         <Tooltip
-          contentStyle={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 8, fontSize: 12 }}
-          labelStyle={{ color: "#94a3b8" }}
-          itemStyle={{ color: "#60a5fa" }}
+          contentStyle={{ background: "#0d1117", border: "1px solid #ffffff10", borderRadius: 10, fontSize: 12 }}
+          labelStyle={{ color: "#64748b" }}
+          itemStyle={{ color: "#818cf8" }}
           formatter={(v) => [`₹ ${fmtINR(v)}`, "Revenue"]}
         />
         <Area
           type="monotone"
           dataKey="revenue"
-          stroke="#3b82f6"
-          strokeWidth={2.5}
+          stroke="#6366f1"
+          strokeWidth={2}
           fill="url(#revGrad)"
-          dot={{ fill: "#3b82f6", r: 4, strokeWidth: 0 }}
-          activeDot={{ r: 6, fill: "#60a5fa" }}
+          dot={{ fill: "#6366f1", r: 3.5, strokeWidth: 0 }}
+          activeDot={{ r: 5.5, fill: "#818cf8" }}
         />
       </AreaChart>
     </ResponsiveContainer>
   );
 });
 
-// ─── Stat card ────────────────────────────────────────────────────────────────
+// ─── Stat Card ────────────────────────────────────────────────────────────────
 
-const StatCard = memo(({ icon, label, value, sub, accent, extra }) => (
-  <div className="bg-[#0f1929] rounded-xl p-5 flex flex-col gap-1 border border-slate-800 hover:border-slate-700 transition-colors">
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-base ${accent}`}>{icon}</span>
-        <span className="text-slate-400 text-sm font-medium">{label}</span>
-      </div>
-      {extra}
+const StatCard = memo(({ icon, label, value, sub, accent }) => (
+  <div className="bg-[#0d1117] border border-white/[0.07] rounded-xl p-5 flex flex-col gap-1 shadow-xl shadow-black/20 hover:border-white/[0.12] transition-all duration-200">
+    <div className="flex items-center justify-between mb-1">
+      <p className="text-xs text-slate-500 uppercase tracking-widest">{label}</p>
+      <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${accent}`}>{icon}</span>
     </div>
-    <div className="text-4xl font-bold text-white mt-1 tracking-tight">{value}</div>
-    <div className="text-slate-500 text-xs">{sub}</div>
+    <div className="text-3xl font-bold text-white tracking-tight">{value}</div>
+    <div className="text-slate-600 text-xs mt-0.5">{sub}</div>
   </div>
 ));
 
-// ─── Section card wrapper ──────────────────────────────────────────────────────
+// ─── Card wrapper ─────────────────────────────────────────────────────────────
 
 const Card = memo(({ children, className = "" }) => (
-  <div className={`bg-[#0f1929] rounded-xl border border-slate-800 p-3 ${className}`}>
+  <div className={`bg-[#0d1117] border border-white/[0.07] rounded-xl p-5 shadow-xl shadow-black/20 ${className}`}>
     {children}
   </div>
 ));
 
-// ─── Main Dashboard ────────────────────────────────────────────────────────────
+// ─── Service Donut ────────────────────────────────────────────────────────────
+
+const DONUT_COLORS = ["#6366f1", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#06b6d4"];
+
+const ServiceDonut = memo(({ data }) => {
+  const cleaned = data
+    .filter((item) => item.service_type)
+    .map((item) => ({ name: item.service_type, value: Number(item.total_revenue) }))
+    .sort((a, b) => b.value - a.value);
+
+  const topFive = cleaned.slice(0, 5);
+  const othersTotal = cleaned.slice(5).reduce((sum, item) => sum + item.value, 0);
+  let finalData = [...topFive];
+  if (othersTotal > 0) finalData.push({ name: "Others", value: othersTotal });
+  const formatted = finalData.map((item, i) => ({ ...item, fill: DONUT_COLORS[i % DONUT_COLORS.length] }));
+  const totalRevenue = formatted.reduce((sum, item) => sum + item.value, 0);
+
+  return (
+    <div className="flex items-center gap-6 w-full">
+      <div className="w-[160px] h-[160px] flex-shrink-0">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload?.length) {
+                  const d = payload[0].payload;
+                  const pct = ((d.value / totalRevenue) * 100).toFixed(1);
+                  return (
+                    <div className="bg-[#0d1117] border border-white/[0.08] rounded-lg px-3 py-2 shadow-xl">
+                      <p className="text-slate-400 text-xs">{d.name}</p>
+                      <p className="text-white text-sm font-semibold">₹ {fmtINR(d.value)} <span className="text-slate-500 font-normal">({pct}%)</span></p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
+            <Pie data={formatted} dataKey="value" innerRadius={48} outerRadius={68} paddingAngle={3} isAnimationActive={false}>
+              {formatted.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="flex flex-col gap-2.5 flex-1 min-w-0">
+        {formatted.map((item, i) => {
+          const pct = totalRevenue ? ((item.value / totalRevenue) * 100).toFixed(1) : 0;
+          return (
+            <div key={i} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: item.fill }} />
+                <span className="text-slate-400 text-xs truncate">{item.name}</span>
+              </div>
+              <span className="text-slate-500 text-xs flex-shrink-0">{pct}%</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+});
+
+// ─── Growth helpers ───────────────────────────────────────────────────────────
+
+function formatGrowth(growth) {
+  const sign = growth > 0 ? "+" : "";
+  return `${sign}${growth}% vs last month`;
+}
+
+function growthStyles(growth) {
+  if (growth > 0) return "text-emerald-400";
+  if (growth < 0) return "text-red-400";
+  return "text-slate-500";
+}
+
+function growthIcon(growth) {
+  if (growth > 0) return "▲";
+  if (growth < 0) return "▼";
+  return "•";
+}
+
+// ─── Dashboard Content ────────────────────────────────────────────────────────
 
 const DashboardContent = memo(({ data }) => {
-  const {
-    summary,
-    revenueOverview,
-    topClients,
-    overdueProjects,
-    upcomingProjects,
-    monthServiceDistribution
-  } = data;
-
-
-  function formatGrowth(growth) {
-    const sign = growth > 0 ? "+" : "";
-    return `${sign}${growth}% vs previous month`;
-  }
-  
-  function growthStyles(growth) {
-    if (growth > 0) {
-      return "text-emerald-400 drop-shadow-[0_0_6px_rgba(16,185,129,0.4)]";
-    }
-    if (growth < 0) {
-      return "text-red-400 drop-shadow-[0_0_6px_rgba(239,68,68,0.4)]";
-    }
-    return "text-slate-400";
-  }
-  
-  function growthIcon(growth) {
-    if (growth > 0) return "▲";
-    if (growth < 0) return "▼";
-    return "•";
-  }
-
-  const ServiceDonut = memo(({ data }) => {
-
-    const COLORS = [
-      "#3b82f6",
-      "#8b5cf6",
-      "#10b981",
-      "#f59e0b",
-      "#ef4444",
-      "#06b6d4",
-    ];
-  
-        const cleaned = data
-      .filter(item => item.service_type) // remove null
-      .map(item => ({
-        name: item.service_type,
-        value: Number(item.total_revenue),
-      }))
-      .sort((a, b) => b.value - a.value);
-
-    // 🔹 Take top 5
-    const topFive = cleaned.slice(0, 5);
-
-    // 🔹 Sum remaining as "Others"
-    const others = cleaned.slice(5);
-    const othersTotal = others.reduce((sum, item) => sum + item.value, 0);
-
-    // 🔹 Final data
-    let finalData = [...topFive];
-
-    if (othersTotal > 0) {
-      finalData.push({
-        name: "Others",
-        value: othersTotal,
-      });
-    }
-
-    // 🔹 Add colors
-    const formatted = finalData.map((item, index) => ({
-      ...item,
-      fill: COLORS[index % COLORS.length],
-    }));
-    
-    const totalRevenue = formatted.reduce(
-      (sum, item) => sum + item.value,
-      0
-    );
-  
-    return (
-      <div className="flex items-center gap-6">
-        
-        {/* Donut */}
-        <div className="w-[180px] h-[180px]">
-          <ResponsiveContainer>
-          <PieChart>
-
-          <Tooltip
-            content={({ active, payload }) => {
-              if (active && payload && payload.length) {
-                const data = payload[0].payload;
-                const percent = (
-                  (data.value / totalRevenue) *
-                  100
-                ).toFixed(1);
-
-                return (
-                  <div className="bg-[#0b1220] border border-slate-700 rounded-lg px-3 py-2 shadow-lg">
-                    <p className="text-slate-300 text-xs font-medium">
-                      {data.name}
-                    </p>
-                    <p className="text-white text-sm font-semibold">
-                      ₹ {fmtINR(data.value)} ({percent}%)
-                    </p>
-                  </div>
-                );
-              }
-              return null;
-            }}
-          />
-
-            <Pie
-              data={formatted}
-              dataKey="value"
-              innerRadius={55}
-              outerRadius={75}
-              paddingAngle={3}
-              isAnimationActive={false}
-            >
-                {formatted.map((entry, i) => (
-                  <Cell key={i} fill={entry.fill} />
-                ))}
-              </Pie>
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-  
-        {/* Legend */}
-        <div className="flex flex-col gap-2 flex-1">
-          {formatted.map((item, i) => (
-            <div key={i} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span
-                  className="w-2 h-2 rounded-full"
-                  style={{ background: item.fill }}
-                />
-                <span className="text-slate-300 text-sm truncate">
-                  {item.name}
-                </span>
-              </div>
-             
-            </div>
-          ))}
-        </div>
-  
-      </div>
-    );
-  });
+  const { summary, revenueOverview, topClients, overdueProjects, upcomingProjects, monthServiceDistribution } = data;
 
   return (
     <DashboardLayout>
-      <div className="px-6 py-6 space-y-10">
-        {/* ── Dashboard Header ── */}
+      <div className="min-h-screen bg-[#080c12] px-6 py-6 space-y-6">
+
+        {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-white tracking-tight">
-              Dashboard
-            </h1>
-            <p className="text-slate-500 text-sm mt-1">
-              Overview of business performance
-            </p>
+            <h1 className="text-2xl font-bold tracking-tight text-white">Dashboard</h1>
+            <p className="text-xs text-slate-500 mt-1">Overview of business performance</p>
+          </div>
+          <div className="text-xs text-slate-600 bg-white/[0.03] border border-white/[0.06] px-3 py-1.5 rounded-lg">
+            {new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
           </div>
         </div>
 
-          {/* ── TOP STAT CARDS ── */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
-
+        {/* ── Stat Cards ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             icon="👤"
             label="Last Month Leads"
             value={summary.monthLeads}
-            sub={
-              <span className={`${growthStyles(summary.monthLeadsGrowth)} flex items-center gap-1`}>
-                {growthIcon(summary.monthLeadsGrowth)}
-                {formatGrowth(summary.monthLeadsGrowth)}
-              </span>
-            }
-            accent="bg-blue-900 text-blue-400"
+            sub={<span className={`${growthStyles(summary.monthLeadsGrowth)} flex items-center gap-1`}>{growthIcon(summary.monthLeadsGrowth)} {formatGrowth(summary.monthLeadsGrowth)}</span>}
+            accent="bg-blue-400/10 text-blue-400"
           />
-
           <StatCard
             icon="🏢"
             label="Last Month Clients"
             value={summary.monthClients}
-            sub={
-              <span className={`${growthStyles(summary.monthClientsGrowth)} flex items-center gap-1`}>
-                {growthIcon(summary.monthClientsGrowth)}
-                {formatGrowth(summary.monthClientsGrowth)}
-              </span>
-            }
-            accent="bg-violet-900 text-violet-400"
+            sub={<span className={`${growthStyles(summary.monthClientsGrowth)} flex items-center gap-1`}>{growthIcon(summary.monthClientsGrowth)} {formatGrowth(summary.monthClientsGrowth)}</span>}
+            accent="bg-violet-400/10 text-violet-400"
           />
-
           <StatCard
             icon="📁"
             label="Active Projects"
             value={summary.activeProjects}
-            sub={`${summary.completedProjects} completed`}
-            accent="bg-emerald-900 text-emerald-400"
+            sub={<span className="text-slate-600">{summary.completedProjects} completed</span>}
+            accent="bg-emerald-400/10 text-emerald-400"
           />
-
           <StatCard
             icon="₹"
             label="Last Month Revenue"
             value={`₹ ${fmtINR(summary.monthRevenue)}`}
-            sub={
-              <span className={`${growthStyles(summary.monthRevenueGrowth)} flex items-center gap-1`}>
-                {growthIcon(summary.monthRevenueGrowth)}
-                {formatGrowth(summary.monthRevenueGrowth)}
-              </span>
-            }
-            accent="bg-amber-900 text-amber-400"
+            sub={<span className={`${growthStyles(summary.monthRevenueGrowth)} flex items-center gap-1`}>{growthIcon(summary.monthRevenueGrowth)} {formatGrowth(summary.monthRevenueGrowth)}</span>}
+            accent="bg-amber-400/10 text-amber-400"
           />
-
-          </div>
-
-        {/* ── MID ROW: Pipeline + Revenue ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6 items-stretch">
-
-         {/* Service Distribution — 1/3 */}
-            <div className="flex">
-              <Card className="flex flex-col w-full h-full">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <h2 className="text-white font-semibold text-sm">
-                      Service Revenue Distribution
-                    </h2>
-                    <p className="text-slate-500 text-xs mt-0.5">
-                      Revenue split by service type
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-lg">
-                    <span className="text-slate-400 text-xs">₹</span>
-                    <span className="text-slate-300 text-xs">
-                      Total ₹ {fmtINR(summary.monthRevenue)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex-1 flex items-center">
-                  <div className="w-full h-[260px] flex items-center">
-                    <ServiceDonut data={monthServiceDistribution || []} />
-                  </div>
-                </div>
-              </Card>
-            </div>
-          {/* Revenue — 2/3 */}
-          <div className="lg:col-span-2 flex">
-            <Card className="flex flex-col w-full h-full">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-white font-semibold text-sm">
-                    Revenue Overview
-                  </h2>
-                  <p className="text-slate-500 text-xs mt-0.5">
-                    Payments collected over time
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400 text-xs">
-                    Last 6 months 📅
-                  </span>
-                  
-                </div>
-              </div>
-
-              <div className="flex-1">
-                <div className="h-[260px]">
-                  <RevenueChart revenueOverview={revenueOverview} />
-                </div>
-              </div>
-            </Card>
-          </div>
-
         </div>
-          {/* ── INSIGHT ROW ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6 items-stretch">
 
-          {/* 🥇 Top Paying Clients */}
-          <Card className="bg-gradient-to-br from-[#0f1929] to-[#0c1624]">
-            <h2 className="text-white font-semibold text-sm mb-5 tracking-wide">
-              Top Paying Clients
-            </h2>
+        {/* ── Mid Row: Donut + Revenue Chart ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-            <div className="space-y-6">
+          {/* Service Distribution */}
+          <Card className="flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-semibold text-white">Service Distribution</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Revenue split by service</p>
+              </div>
+              <div className="flex items-center gap-1 bg-white/[0.04] border border-white/[0.06] px-2.5 py-1 rounded-lg">
+                <span className="text-slate-500 text-xs">Total</span>
+                <span className="text-slate-300 text-xs font-medium">₹ {fmtINR(summary.monthRevenue)}</span>
+              </div>
+            </div>
+            <div className="flex-1 flex items-center min-h-[180px]">
+              <ServiceDonut data={monthServiceDistribution || []} />
+            </div>
+          </Card>
+
+          {/* Revenue Chart */}
+          <Card className="lg:col-span-2 flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-sm font-semibold text-white">Revenue Overview</h2>
+                <p className="text-xs text-slate-500 mt-0.5">Payments collected over time</p>
+              </div>
+              <span className="text-xs text-slate-600 bg-white/[0.03] border border-white/[0.06] px-2.5 py-1 rounded-lg">Last 6 months</span>
+            </div>
+            <div className="flex-1 min-h-[200px]">
+              <RevenueChart revenueOverview={revenueOverview} />
+            </div>
+          </Card>
+        </div>
+
+        {/* ── Bottom Row: Clients + Overdue + Upcoming ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+          {/* Top Paying Clients */}
+          <Card>
+            <h2 className="text-sm font-semibold text-white mb-4">Top Paying Clients</h2>
+            <div className="space-y-1">
               {(topClients || []).map((client, index) => (
-                <div
-                  key={client.id}
-                  className="flex justify-between items-start p-3 rounded-lg hover:bg-slate-800/40 transition"
-                >
-                  <div className="flex gap-3">
-                    <span className="text-slate-500 text-xs w-5 mt-1">
-                      {index + 1}.
-                    </span>
-                    <div>
-                      <p className="text-slate-200 text-sm font-medium">
-                        {client.name}
-                      </p>
-                      <p className="text-slate-500 text-xs">
-                        {client.total_projects} projects • Since{" "}
-                        {new Date(client.client_since).toLocaleDateString()}
+                <div key={client.id} className="flex justify-between items-center px-3 py-2.5 rounded-lg hover:bg-white/[0.025] transition-colors duration-150">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xs text-slate-600 w-4 flex-shrink-0">{index + 1}</span>
+                    <div className="min-w-0">
+                      <p className="text-sm text-slate-200 font-medium truncate">{client.name}</p>
+                      <p className="text-xs text-slate-600">
+                        {client.total_projects} project{client.total_projects !== 1 ? "s" : ""} · since {new Date(client.client_since).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
                       </p>
                     </div>
                   </div>
-
-                  <p className="text-emerald-400 text-base font-bold">
-                    ₹ {fmtINR(client.total_paid)}
-                  </p>
+                  <p className="text-emerald-400 text-sm font-semibold flex-shrink-0 ml-3">₹ {fmtINR(client.total_paid)}</p>
                 </div>
               ))}
             </div>
           </Card>
 
-
+          {/* Overdue Projects */}
           <Card>
-          <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-semibold text-sm mb-5 tracking-wide">
-              Overdue Projects
-            </h2>
-            <span className="text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full">
-              {overdueProjects?.length || 0}
-            </span>
-          </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-white">Overdue Projects</h2>
+              <span className="text-xs bg-red-400/10 text-red-400 px-2 py-0.5 rounded-full font-medium">
+                {overdueProjects?.length || 0}
+              </span>
+            </div>
+            {(overdueProjects || []).length === 0 ? (
+              <div className="flex flex-col items-center py-8 gap-2 text-slate-600">
+                <span className="text-2xl">🎉</span>
+                <p className="text-xs">No overdue projects</p>
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {overdueProjects.map((proj) => {
+                  const daysOverdue = Math.ceil((new Date() - new Date(proj.deadline)) / 86400000);
+                  return (
+                    <div key={proj.id} className="flex justify-between items-center py-2.5 border-b border-white/[0.05] last:border-0">
+                      <div className="min-w-0 pr-3">
+                        <p className="text-sm text-slate-200 truncate">{proj.name}</p>
+                        <p className="text-xs text-red-400 mt-0.5">{daysOverdue}d overdue</p>
+                      </div>
+                      <StatusBadge status={proj.status} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
 
-          {(overdueProjects || []).length === 0 ? (
-            <p className="text-slate-500 text-sm">No overdue projects 🎉</p>
-          ) : (
-            overdueProjects.map((proj) => {
-              const daysOverdue = Math.ceil(
-                (new Date() - new Date(proj.deadline)) /
-                (1000 * 60 * 60 * 24)
-              );
-
-              return (
-                <div
-                  key={proj.id}
-                  className="flex justify-between items-start py-2 border-b border-slate-800 last:border-0"
-                >
-                  <div>
-                    <p className="text-slate-200 text-sm truncate">
-                      {proj.name}
-                    </p>
-                    <p className="text-red-400 text-xs">
-                      {daysOverdue} days overdue
-                    </p>
-                  </div>
-                  <StatusBadge status={proj.status} />
-                </div>
-              );
-            })
-          )}
-        </Card>
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-semibold text-sm mb-5 tracking-wide">
-              Due in Next 7 Days
-            </h2>
-            <span className="text-xs bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full">
-              {upcomingProjects?.length || 0}
-            </span>
-          </div>
-
-          {(upcomingProjects || []).length === 0 ? (
-            <p className="text-slate-500 text-sm">No upcoming deadlines</p>
-          ) : (
-            upcomingProjects.map((proj) => {
-              const daysLeft = Math.ceil(
-                (new Date(proj.deadline) - new Date()) /
-                (1000 * 60 * 60 * 24)
-              );
-
-              return (
-                <div
-                  key={proj.id}
-                  className="flex justify-between items-start py-2 border-b border-slate-800 last:border-0"
-                >
-                  <div>
-                    <p className="text-slate-200 text-sm truncate">
-                      {proj.name}
-                    </p>
-                    <p className="text-amber-400 text-xs">
-                      {daysLeft} days left
-                    </p>
-                  </div>
-                  <StatusBadge status={proj.status} />
-                </div>
-              );
-            })
-          )}
-        </Card>
-
-
+          {/* Due in Next 7 Days */}
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-white">Due in 7 Days</h2>
+              <span className="text-xs bg-amber-400/10 text-amber-400 px-2 py-0.5 rounded-full font-medium">
+                {upcomingProjects?.length || 0}
+              </span>
+            </div>
+            {(upcomingProjects || []).length === 0 ? (
+              <div className="flex flex-col items-center py-8 gap-2 text-slate-600">
+                <span className="text-2xl">✅</span>
+                <p className="text-xs">No upcoming deadlines</p>
+              </div>
+            ) : (
+              <div className="space-y-0">
+                {upcomingProjects.map((proj) => {
+                  const daysLeft = Math.ceil((new Date(proj.deadline) - new Date()) / 86400000);
+                  return (
+                    <div key={proj.id} className="flex justify-between items-center py-2.5 border-b border-white/[0.05] last:border-0">
+                      <div className="min-w-0 pr-3">
+                        <p className="text-sm text-slate-200 truncate">{proj.name}</p>
+                        <p className="text-xs text-amber-400 mt-0.5">{daysLeft}d left</p>
+                      </div>
+                      <StatusBadge status={proj.status} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+        </div>
 
       </div>
-    </div>
     </DashboardLayout>
   );
 });
 
-// ─── Skeleton loader ───────────────────────────────────────────────────────────
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 const SkeletonCard = () => (
-  <div className="bg-[#0f1929] rounded-xl border border-slate-800 p-5 animate-pulse">
-    <div className="h-3 bg-slate-800 rounded w-1/3 mb-3" />
-    <div className="h-8 bg-slate-800 rounded w-1/2 mb-2" />
-    <div className="h-2 bg-slate-800 rounded w-1/4" />
+  <div className="bg-[#0d1117] border border-white/[0.07] rounded-xl p-5 animate-pulse">
+    <div className="h-2.5 bg-white/[0.05] rounded w-1/3 mb-4" />
+    <div className="h-8 bg-white/[0.05] rounded w-1/2 mb-3" />
+    <div className="h-2 bg-white/[0.05] rounded w-1/4" />
   </div>
 );
 
 const DashboardSkeleton = () => (
-  <div className="min-h-screen bg-[#070f1a] p-5 space-y-5">
+  <div className="min-h-screen bg-[#080c12] p-6 space-y-6">
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
     </div>
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       {[...Array(2)].map((_, i) => (
-        <div key={i} className="bg-[#0f1929] rounded-xl border border-slate-800 p-5 animate-pulse h-64" />
+        <div key={i} className={`bg-[#0d1117] border border-white/[0.07] rounded-xl p-5 animate-pulse h-64 ${i === 1 ? "lg:col-span-2" : ""}`} />
       ))}
     </div>
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {[...Array(2)].map((_, i) => (
-        <div key={i} className="bg-[#0f1929] rounded-xl border border-slate-800 p-5 animate-pulse h-48" />
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="bg-[#0d1117] border border-white/[0.07] rounded-xl p-5 animate-pulse h-52" />
       ))}
     </div>
   </div>
 );
 
-// ─── Root export — drop inside <DashboardLayout> ───────────────────────────────
+// ─── Root Export ──────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
-  // Stable fetch — runs once on mount
   const fetchData = useCallback(async () => {
     try {
       const res = await api.get("/dashboard/full");
@@ -580,16 +431,14 @@ export default function DashboardPage() {
     } catch (err) {
       setError("Failed to load dashboard data.");
     }
-  }, []); // empty deps → created once
+  }, []);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   if (error)
     return (
-      <div className="min-h-screen bg-[#070f1a] flex items-center justify-center">
-        <div className="bg-red-900/20 border border-red-700/40 text-red-400 rounded-xl px-6 py-4 text-sm">
+      <div className="min-h-screen bg-[#080c12] flex items-center justify-center">
+        <div className="bg-red-400/10 border border-red-400/20 text-red-400 rounded-xl px-6 py-4 text-sm">
           {error}
         </div>
       </div>
@@ -598,5 +447,4 @@ export default function DashboardPage() {
   if (!data) return <DashboardSkeleton />;
 
   return <DashboardContent data={data} />;
-  }
-
+}

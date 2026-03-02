@@ -100,12 +100,12 @@ CREATE TABLE task_history (
 
 ALTER TABLE clients MODIFY lead_id INT NULL;
 ALTER TABLE clients add project varchar(255) Not NULL;
-
+select * from users;
 SELECT * FROM leads;
 SELECT * FROM clients;
 SELECT * FROM tasks;
 select * from payments;
-select * from projects
+select * from projects;
 
 describe tasks;
 describe leads;
@@ -334,3 +334,16 @@ CREATE TABLE project_features (
 
 DESCRIBE projects;
 select * from payments;
+
+
+
+ALTER TABLE leads ADD COLUMN workspace_id INT;
+ALTER TABLE clients ADD COLUMN workspace_id INT;
+ALTER TABLE tasks ADD COLUMN workspace_id INT;
+ALTER TABLE payments ADD COLUMN workspace_id INT;
+
+describe payments;
+describe projects;
+
+select * from payments;
+select * from projects;

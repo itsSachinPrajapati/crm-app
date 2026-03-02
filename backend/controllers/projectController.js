@@ -9,13 +9,13 @@ exports.createProject = async (req, res) => {
       name,
       description,
       client_id,
-      total_amount,
+      budget,
       status,
       start_date,
       deadline
     } = req.body;
 
-    if (!name || !client_id || total_amount == null || !start_date || !deadline) {
+    if (!name || !client_id || budget == null || !start_date || !deadline) {
       return res.status(400).json({
         message: "All required fields must be filled"
       });
@@ -38,14 +38,14 @@ exports.createProject = async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO projects
        (name, description, client_id, workspace_id,
-        total_amount, status, start_date, deadline)
+        budget, status, start_date, deadline)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         name,
         description || null,
         client_id,
         workspaceId,
-        total_amount,
+        budget,
         status || "active",
         start_date,
         deadline
@@ -83,7 +83,7 @@ exports.getFullProject = async (req, res) => {
           p.*,
           c.name AS client_name,
           IFNULL(SUM(pay.amount),0) AS total_paid,
-          (p.total_amount - IFNULL(SUM(pay.amount),0)) AS remaining_amount
+          (p.budget - IFNULL(SUM(pay.amount),0)) AS remaining_amount
        FROM projects p
        LEFT JOIN clients c ON p.client_id = c.id
        LEFT JOIN payments pay 
@@ -215,6 +215,7 @@ exports.getProjectById = async (req, res) => {
           ? req.user.id
           : req.user.owner_id;
   
+      // 🔍 Check if project exists
       const [existing] = await pool.query(
         "SELECT * FROM projects WHERE id = ? AND workspace_id = ?",
         [id, workspaceId]
@@ -226,16 +227,82 @@ exports.getProjectById = async (req, res) => {
   
       const project = existing[0];
   
+      // ====================================================
+      // 👤 EMPLOYEE LOGIC
+      // ====================================================
+      if (req.user.role === "employee") {
+  
+        // ❌ Block if trying to modify other fields
+        if (
+          (name && name !== project.name) ||
+          (description && description !== project.description) ||
+          (status && status !== project.status) ||
+          (start_date && start_date !== project.start_date?.toISOString()?.split("T")[0])
+        ) {
+          return res.status(403).json({
+            message: "You are not allowed to update these fields"
+          });
+        }
+  
+        if (!deadline) {
+          return res.status(400).json({
+            message: "Deadline is required"
+          });
+        }
+  
+        const currentDeadline = new Date(project.deadline);
+        const newDeadline = new Date(deadline);
+        const today = new Date();
+  
+        // Normalize time
+        currentDeadline.setHours(0, 0, 0, 0);
+        newDeadline.setHours(0, 0, 0, 0);
+        today.setHours(0, 0, 0, 0);
+  
+        // ❌ Cannot shorten or keep same
+        if (newDeadline <= currentDeadline) {
+          return res.status(400).json({
+            message: "Deadline can only be extended forward"
+          });
+        }
+  
+        // ❌ Cannot set in past
+        if (newDeadline < today) {
+          return res.status(400).json({
+            message: "Deadline cannot be set in the past"
+          });
+        }
+  
+        await pool.query(
+          `UPDATE projects
+           SET deadline = ?
+           WHERE id = ? AND workspace_id = ?`,
+          [deadline, id, workspaceId]
+        );
+  
+        return res.json({
+          message: "Deadline extended successfully"
+        });
+      }
+  
+      // ====================================================
+      // 👑 ADMIN LOGIC
+      // ====================================================
+  
       await pool.query(
         `UPDATE projects
-         SET name=?, description=?, status=?, start_date=?, deadline=?
-         WHERE id=? AND workspace_id=?`,
+         SET name = ?,
+             description = ?,
+             status = ?,
+             start_date = ?,
+             deadline = ?
+         WHERE id = ? AND workspace_id = ?`,
         [
-          name || project.name,
-          description || project.description,
-          status || project.status,
-          start_date || project.start_date,
-          deadline || project.deadline,
+          name ?? project.name,
+          description ?? project.description,
+          status ?? project.status,
+          start_date ?? project.start_date,
+          deadline ?? project.deadline,
           id,
           workspaceId
         ]
@@ -244,35 +311,40 @@ exports.getProjectById = async (req, res) => {
       res.json({ message: "Project updated successfully" });
   
     } catch (error) {
+      console.error(error);
       res.status(500).json({ message: "Server error" });
     }
   };
 
-  exports.deleteProject = async (req, res) => {
-    try {
-      const { id } = req.params;
-  
-      const workspaceId =
-        req.user.role === "admin"
-          ? req.user.id
-          : req.user.owner_id;
-  
-      const [result] = await pool.query(
-        "DELETE FROM projects WHERE id = ? AND workspace_id = ?",
-        [id, workspaceId]
-      );
-  
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ message: "Project not found" });
-      }
-  
-      res.json({ message: "Project deleted successfully" });
-  
-    } catch (error) {
-      res.status(500).json({ message: "Server error" });
-    }
-  };
+exports.deleteProject = async (req, res) => {
+  try {
 
+    if (req.user.role !== "admin") {
+      return res.status(403).json({
+        message: "Only admin can delete projects"
+      });
+    }
+
+    const { id } = req.params;
+
+    const workspaceId = req.user.id;
+
+    const [result] = await pool.query(
+      "DELETE FROM projects WHERE id = ? AND workspace_id = ?",
+      [id, workspaceId]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Project not found" });
+    }
+
+    res.json({ message: "Project deleted successfully" });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
   exports.getProjects = async (req, res) => {
     try {
       const workspaceId =
@@ -280,29 +352,65 @@ exports.getProjectById = async (req, res) => {
           ? req.user.id
           : req.user.owner_id;
   
+      const { search = "", page = 1, limit = 10 } = req.query;
+  
+      const offset = (page - 1) * limit;
+  
+      // 🔹 Get paginated projects
       const [projects] = await pool.query(
         `SELECT 
             p.*,
             c.name AS client_name,
             IFNULL(SUM(pay.amount), 0) AS total_paid,
-            SUM(CASE 
-                  WHEN pay.payment_type = 'advance'
-                       AND pay.status = 'paid'
-                  THEN pay.amount ELSE 0 
-                END) AS advance_paid,
-            (p.total_amount - IFNULL(SUM(pay.amount), 0)) AS remaining_amount
+            (p.budget - IFNULL(SUM(pay.amount), 0)) AS remaining_amount
          FROM projects p
          JOIN clients c ON p.client_id = c.id
          LEFT JOIN payments pay 
            ON pay.project_id = p.id 
            AND pay.status = 'paid'
          WHERE p.workspace_id = ?
+           AND p.name LIKE ?
          GROUP BY p.id
-         ORDER BY p.created_at DESC`,
+         ORDER BY p.created_at DESC
+         LIMIT ? OFFSET ?`,
+        [
+          workspaceId,
+          `%${search}%`,
+          Number(limit),
+          Number(offset)
+        ]
+      );
+  
+      // 🔹 Total count (for pagination)
+      const [countResult] = await pool.query(
+        `SELECT COUNT(*) as total
+         FROM projects
+         WHERE workspace_id = ?
+           AND name LIKE ?`,
+        [workspaceId, `%${search}%`]
+      );
+
+      const [stats] = await pool.query(
+        `SELECT
+           COUNT(*) as total,
+           SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) as totalActive,
+           SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as totalCompleted
+         FROM projects
+         WHERE workspace_id = ?`,
         [workspaceId]
       );
   
-      res.json(projects);
+      const total = countResult[0].total;
+      const totalPages = Math.ceil(total / limit);
+  
+      res.json({
+        projects,
+        total: stats[0].total,
+        totalActive: stats[0].totalActive || 0,
+        totalCompleted: stats[0].totalCompleted || 0,
+        page: Number(page),
+        totalPages
+      });
   
     } catch (error) {
       console.error(error);
