@@ -34,21 +34,20 @@ const STAT_CARDS = [
 ];
 
 const STATUS_STYLE = {
-  new: "text-slate-300",
-  contacted: "text-slate-300",
-  qualified: "text-slate-300",
-  working: "text-slate-300",
-  "proposal sent": "text-slate-300",
-  closed: "text-slate-400",
+  new: "text-blue-400",
+  contacted: "text-yellow-400",
+  qualified: "text-violet-400",
+  "proposal sent": "text-orange-400",
+  closed: "text-emerald-400",
+  lost: "text-red-400",
 };
-
 const STATUS_DOT = {
-  new: "bg-slate-500",
-  contacted: "bg-slate-500",
-  qualified: "bg-slate-500",
-  working: "bg-slate-500",
-  "proposal sent": "bg-slate-500",
-  closed: "bg-slate-600",
+  new: "bg-blue-400",
+  contacted: "bg-yellow-400",
+  qualified: "bg-violet-400",
+  "proposal sent": "bg-orange-400",
+  closed: "bg-emerald-400",
+  lost: "bg-red-400",
 };
 
 const FILTER_TABS = ["All", "New", "Contacted", "Qualified", "Working", "Proposal Sent"];
@@ -86,6 +85,8 @@ function LeadCard({ lead ,onConverted }) {
   const [addingNote, setAddingNote] = useState(false);
   const notesEndRef = useRef(null);
   const [editingStatus, setEditingStatus] = useState(false);
+  const [showConvertModal, setShowConvertModal] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
 
   // -------------------------
   // Fetch Notes
@@ -243,11 +244,18 @@ function LeadCard({ lead ,onConverted }) {
     </select>
   ) : (
     <span
-      onClick={() => setEditingStatus(true)}
-      className="text-slate-300 font-medium cursor-pointer hover:text-white"
-    >
-      {status}
-    </span>
+  onClick={() => setEditingStatus(true)}
+  className={`inline-flex items-center gap-1.5 cursor-pointer text-sm font-medium ${
+    STATUS_STYLE[status] || "text-slate-400"
+  }`}
+>
+  <span
+    className={`w-2 h-2 rounded-full ${
+      STATUS_DOT[status] || "bg-slate-400"
+    }`}
+  />
+  {status}
+</span>
   )}
 </div>
 
@@ -384,25 +392,70 @@ function LeadCard({ lead ,onConverted }) {
           </Dialog>
 
         </div>
+          {/* Convert Button */}
+          <button
+            onClick={() => setShowConvertModal(true)}
+            disabled={status !== "closed"}
+            className={`w-full px-4 py-2 text-sm rounded-lg transition ${
+              status === "closed"
+                ? "bg-white text-black hover:bg-slate-200"
+                : "bg-white/5 text-slate-500 border border-white/10 cursor-not-allowed"
+            }`}
+          >
+            Convert to Client
+          </button>
 
-        {/* Convert Button */}
-        <button
-          onClick={handleConvert}
-          disabled={status !== "closed"}
-          className={`w-full px-4 py-2 text-sm rounded-lg transition ${
-            status === "closed"
-              ? "bg-white text-black hover:bg-slate-200"
-              : "bg-white/5 text-slate-500 border border-white/10 cursor-not-allowed"
-          }`}
-        >
-          Convert to Client
-        </button>
+          {/* 🔥 ADD THIS MODAL RIGHT HERE */}
+          {showConvertModal && (
+            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+              <div className="bg-[#0f1623] border border-white/10 rounded-2xl p-6 w-96">
+                
+                <h2 className="text-lg font-semibold text-white mb-3">
+                  Convert Lead?
+                </h2>
 
-      </div>
+                <p className="text-sm text-slate-400 mb-6">
+                  Are you sure you want to convert{" "}
+                  <span className="text-white font-medium">
+                    {lead.name}
+                  </span>{" "}
+                  into a client?
+                </p>
 
+                <div className="flex justify-end gap-3">
+                  
+                  <button
+                    onClick={() => setShowConvertModal(false)}
+                    disabled={isConverting}
+                    className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:border-white/20 transition"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={async () => {
+                      try {
+                        setIsConverting(true);
+                        await handleConvert();
+                        setShowConvertModal(false);
+                      } finally {
+                        setIsConverting(false);
+                      }
+                    }}
+                    disabled={isConverting}
+                    className="px-4 py-2 rounded-lg bg-white text-black hover:bg-slate-200 transition disabled:opacity-50"
+                  >
+                    {isConverting ? "Converting..." : "Yes, Convert"}
+                  </button>
+
+                </div>
+              </div>
             </div>
-          );
-        }
+          )}
+      </div>  
+    </div>  
+  );
+}
 
 
 // ─── New Lead Modal ────────────────────────────────────────────────────────────
@@ -411,18 +464,18 @@ const EMPTY_FORM = {
   name: "",
   email: "",
   phone: "",
-  address: "",
-  project_info: "",
   source: "",
   status: "new",
+  budget: "",
+  service: ""
 };
 
 function NewLeadModal({ open, onClose, onCreated }) {
-  const [form, setForm]       = useState(EMPTY_FORM);
-  const [errors, setErrors]   = useState({});
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
-  // Reset form whenever modal opens
   useEffect(() => {
     if (open) {
       setForm(EMPTY_FORM);
@@ -435,33 +488,10 @@ function NewLeadModal({ open, onClose, onCreated }) {
   const validate = () => {
     const newErrors = {};
 
-    const nameRegex = /^[A-Za-z]+\s+[A-Za-z]+/;
-    if (!form.name.trim()) {
-      newErrors.name = "Required";
-    } else if (!nameRegex.test(form.name.trim())) {
-      newErrors.name = "Enter full name (First & Last)";
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!form.email.trim()) {
-      newErrors.email = "Required";
-    } else if (!emailRegex.test(form.email.trim())) {
-      newErrors.email = "Enter valid email (example@gmail.com)";
-    }
-
-    const phoneRegex = /^\+91[0-9]{10}$/;
-    if (!form.phone.trim()) {
-      newErrors.phone = "Required";
-    } else if (!phoneRegex.test(form.phone.trim())) {
-      newErrors.phone = "Use format +91XXXXXXXXXX";
-    }
-
-    const allowedSources = ["LinkedIn", "Manual", "Website", "Referral"];
-    if (!form.source.trim()) {
-      newErrors.source = "Required";
-    } else if (!allowedSources.includes(form.source)) {
-      newErrors.source = "Invalid source selected";
-    }
+    if (!form.name.trim()) newErrors.name = "Required";
+    if (!form.email.trim()) newErrors.email = "Required";
+    if (!form.phone.trim()) newErrors.phone = "Required";
+    if (!form.source.trim()) newErrors.source = "Required";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -469,18 +499,24 @@ function NewLeadModal({ open, onClose, onCreated }) {
 
   const handleChange = (key) => (e) => {
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
-    if (errors[key]) {
-      setErrors((prev) => ({ ...prev, [key]: "" }));
-    }
   };
 
   const handleSubmit = async () => {
     if (!validate()) return;
-    setLoading(true);
+  
     try {
+      setLoading(true);
+  
       await api.post("/leads", form);
-      onCreated();
-      onClose();
+  
+      setSuccess(true);   // ✅ show success
+  
+      setTimeout(() => {
+        onCreated();      // refresh list
+        onClose();        // close modal
+        setSuccess(false);
+      }, 1200);
+  
     } catch (err) {
       console.error(err);
     } finally {
@@ -488,115 +524,89 @@ function NewLeadModal({ open, onClose, onCreated }) {
     }
   };
 
-  const isFormValid =
-    form.name.trim() &&
-    form.email.trim() &&
-    form.phone.trim() &&
-    form.source.trim();
-
   return (
-    // ✅ Fixed overlay — covers full screen and centers the modal
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="
-          w-[520px]
-          bg-[#0f1623]
-          border border-white/10
-          rounded-2xl
-          p-8
-          shadow-[0_40px_120px_rgba(0,0,0,0.8)]
-          relative
-        "
-        onClick={(e) => e.stopPropagation()} // prevent backdrop click from closing when clicking inside
-      >
-
-        {/* Header */}
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={onClose}
+        >
+          <div
+            className="
+              w-full max-w-sm
+              bg-[#0f1623]
+              border border-white/10
+              rounded-xl
+              p-5
+              relative
+            "
+            onClick={(e) => e.stopPropagation()}
+          >
         <div className="flex items-center justify-between mb-8">
-          <h2 className="text-xl font-semibold text-white tracking-tight">
+          <h2 className="text-xl font-semibold text-white">
             Create New Lead
           </h2>
           <button
             onClick={onClose}
-            className="text-slate-500 hover:text-white transition"
+            className="text-slate-500 hover:text-white"
           >
             ✕
           </button>
         </div>
+        {success && (
+          <div className="bg-green-500/10 border border-green-500/30 text-green-400 text-sm px-3 py-2 rounded-lg">
+            Lead created successfully ✅
+          </div>
+        )}
+        <div className="space-y-3">
 
-        {/* Form */}
-        <div className="space-y-6">
-
-          {/* Full Name */}
+          {/* Name */}
           <div>
-            <label className="block text-xs text-slate-500 mb-2 uppercase tracking-wider">
-              Full Name
-            </label>
+            <label className="block text-xs text-slate-500 mb-2">Full Name</label>
             <input
               value={form.name}
               onChange={handleChange("name")}
-              className="
-                w-full bg-[#0b111c] border border-white/10 rounded-xl
-                px-4 py-3 text-sm text-white outline-none
-                focus:border-white/20 transition
-              "
-              placeholder="John Doe"
+              className="w-full bg-[#0b111c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
             />
-            {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
           </div>
 
           {/* Email */}
           <div>
-            <label className="block text-xs text-slate-500 mb-2 uppercase tracking-wider">
-              Email
-            </label>
+            <label className="block text-xs text-slate-500 mb-2">Email</label>
             <input
               type="email"
               value={form.email}
               onChange={handleChange("email")}
-              className="
-                w-full bg-[#0b111c] border border-white/10 rounded-xl
-                px-4 py-3 text-sm text-white outline-none
-                focus:border-white/20 transition
-              "
-              placeholder="email@example.com"
+              className="w-full bg-[#0b111c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
             />
-            {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email}</p>}
           </div>
 
           {/* Phone */}
           <div>
-            <label className="block text-xs text-slate-500 mb-2 uppercase tracking-wider">
-              Phone
-            </label>
+            <label className="block text-xs text-slate-500 mb-2">Phone</label>
             <input
               value={form.phone}
               onChange={handleChange("phone")}
-              className="
-                w-full bg-[#0b111c] border border-white/10 rounded-xl
-                px-4 py-3 text-sm text-white outline-none
-                focus:border-white/20 transition
-              "
-              placeholder="+91XXXXXXXXXX"
+              className="w-full bg-[#0b111c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
             />
-            {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone}</p>}
+          </div>
+
+          {/* Budget */}
+          <div>
+            <label className="block text-xs text-slate-500 mb-2">Budget</label>
+            <input
+              type="number"
+              value={form.budget}
+              onChange={handleChange("budget")}
+              className="w-full bg-[#0b111c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+            />
           </div>
 
           {/* Source */}
           <div>
-            <label className="block text-xs text-slate-500 mb-2 uppercase tracking-wider">
-              Source
-            </label>
+            <label className="block text-xs text-slate-500 mb-2">Source</label>
             <select
               value={form.source}
               onChange={handleChange("source")}
-              className="
-                w-full bg-[#0b111c] border border-white/10 rounded-xl
-                px-4 py-3 text-sm text-white outline-none
-                focus:border-white/20 transition
-              "
+              className="w-full bg-[#0b111c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
             >
               <option value="">Select Source</option>
               <option value="LinkedIn">LinkedIn</option>
@@ -604,22 +614,15 @@ function NewLeadModal({ open, onClose, onCreated }) {
               <option value="Website">Website</option>
               <option value="Referral">Referral</option>
             </select>
-            {errors.source && <p className="text-xs text-red-400 mt-1">{errors.source}</p>}
           </div>
 
           {/* Status */}
           <div>
-            <label className="block text-xs text-slate-500 mb-2 uppercase tracking-wider">
-              Status
-            </label>
+            <label className="block text-xs text-slate-500 mb-2">Status</label>
             <select
               value={form.status}
               onChange={handleChange("status")}
-              className="
-                w-full bg-[#0b111c] border border-white/10 rounded-xl
-                px-4 py-3 text-sm text-white outline-none
-                focus:border-white/20 transition
-              "
+              className="w-full bg-[#0b111c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>{s}</option>
@@ -627,28 +630,44 @@ function NewLeadModal({ open, onClose, onCreated }) {
             </select>
           </div>
 
+          {/* Service */}
+          <div>
+            <label className="block text-xs text-slate-500 mb-2">Service</label>
+            <select
+              value={form.service}
+              onChange={handleChange("service")}
+              className="w-full bg-[#0b111c] border border-white/10 rounded-xl px-4 py-3 text-sm text-white"
+            >
+              <option value="">Select Service</option>
+              <option value="AI Customer Support Bot">AI Customer Support Bot</option>
+              <option value="AI Marketing Automation">AI Marketing Automation</option>
+              <option value="AI Workflow Automation">AI Workflow Automation</option>
+              <option value="AI Sales Funnel System">AI Sales Funnel System</option>
+              <option value="Custom GPT Integration">Custom GPT Integration</option>
+              <option value="AI Chatbot Development">AI Chatbot Development</option>
+              <option value="AI Voice Agent Setup">AI Voice Agent Setup</option>
+              <option value="AI Website Builder">AI Website Builder</option>
+              <option value="AI Appointment Booking System">AI Appointment Booking System</option>
+              <option value="AI UGC Ads Creation">AI UGC Ads Creation</option>
+              <option value="AI CRM Automation">AI CRM Automation</option>
+              <option value="Lead Generation AI System">Lead Generation AI System</option>
+            </select>
+          </div>
+
         </div>
 
-        {/* Footer */}
-        <div className="flex justify-end gap-4 mt-10">
+        <div className="flex justify-end gap-4 mt-8">
           <button
             onClick={onClose}
-            className="
-              px-6 py-3 rounded-xl bg-white/5 border border-white/10
-              text-slate-400 hover:text-white hover:border-white/20 transition
-            "
+            className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-slate-400"
           >
             Cancel
           </button>
 
           <button
             onClick={handleSubmit}
-            disabled={!isFormValid || loading}
-            className="
-              px-6 py-3 rounded-xl bg-white text-black font-medium
-              disabled:opacity-40 disabled:cursor-not-allowed
-              hover:bg-slate-200 transition
-            "
+            disabled={loading}
+            className="px-6 py-3 rounded-xl bg-white text-black"
           >
             {loading ? "Creating..." : "Create Lead"}
           </button>
@@ -658,23 +677,32 @@ function NewLeadModal({ open, onClose, onCreated }) {
     </div>
   );
 }
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Leads() {
-  const [leads, setLeads]         = useState([]);
-  const [loading, setLoading]     = useState(true);
+  const [leads, setLeads] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
-  const [search, setSearch]       = useState("");
+  const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [dateFilter, setDateFilter]   = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
   const [serviceSort, setServiceSort] = useState("all");
+  const [stats, setStats] = useState({});
+  const [page, setPage] = useState(1);
+  const [totalLeads, setTotalLeads] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const limit = 18;
 
   const fetchLeads = async () => {
     setLoading(true);
     try {
-      const res = await api.get("/leads");
-      setLeads(res.data);
+      const res = await api.get(`/leads?page=${page}&limit=${limit}`);
+
+      setLeads(res.data.leads || []);
+      setTotalLeads(res.data.total || 0);
+      setTotalPages(res.data.totalPages || 1);
+      setStats(res.data.stats || {});
     } catch (err) {
       console.error(err);
     } finally {
@@ -682,13 +710,9 @@ export default function Leads() {
     }
   };
 
-  useEffect(() => { fetchLeads(); }, []);
-
-  const countByStatus = (key) =>
-    leads.filter((l) => l.status?.toLowerCase() === key.toLowerCase()).length;
-
-  const tabCount = (tab, i) =>
-    i === 0 ? leads.length : countByStatus(tab);
+  useEffect(() => {
+    fetchLeads();
+  }, [page]);
 
   const filtered = leads
     .filter((lead) => {
@@ -705,35 +729,36 @@ export default function Leads() {
         lead.phone?.toLowerCase().includes(search.toLowerCase());
 
       const matchService =
-        serviceSort === "all" ||
-        lead.project === serviceSort ||
-        lead.projectInfo === serviceSort;
+        serviceSort === "all" || lead.service === serviceSort;
 
       let matchDate = true;
 
-      // ✅ Use consistent snake_case key from API
       if (lead.created_at) {
         const created = new Date(lead.created_at);
         const now = new Date();
 
-        if (dateFilter === "today") {
+        if (dateFilter === "today")
           matchDate = created.toDateString() === now.toDateString();
-        }
+
         if (dateFilter === "yesterday") {
           const yesterday = new Date();
           yesterday.setDate(now.getDate() - 1);
-          matchDate = created.toDateString() === yesterday.toDateString();
+          matchDate =
+            created.toDateString() === yesterday.toDateString();
         }
+
         if (dateFilter === "week") {
           const weekAgo = new Date();
           weekAgo.setDate(now.getDate() - 7);
           matchDate = created >= weekAgo;
         }
+
         if (dateFilter === "month") {
           const monthAgo = new Date();
           monthAgo.setMonth(now.getMonth() - 1);
           matchDate = created >= monthAgo;
         }
+
         if (dateFilter === "90days") {
           const d90 = new Date();
           d90.setDate(now.getDate() - 90);
@@ -743,156 +768,186 @@ export default function Leads() {
 
       return matchTab && matchSearch && matchService && matchDate;
     })
-    // ✅ Sort using consistent snake_case key
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   return (
     <DashboardLayout>
-        <div className="min-h-screen px-2 py-2 space-y-10">
+      <div className="min-h-screen px-2 py-2 space-y-10">
 
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-semibold tracking-tight text-white">Leads</h1>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-white text-black hover:bg-slate-200 transition-all duration-200"
-              >
-                <AddIcon sx={{ fontSize: 16 }} />
-                New Lead
-              </button>
-            </div>
-          </div>
+        {/* HEADER */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-white">Leads</h1>
 
-          {/* Stat Cards */}
-          <div className="grid grid-cols-5 gap-6">
-            {STAT_CARDS.map(({ key, label, Icon }) => (
-              <div
-                key={key}
-                className="
-                  bg-[#0c1320]
-                  border border-white/5
-                  rounded-2xl
-                  px-6 py-6
-                  flex items-center justify-between
-                  transition-all duration-300
-                  hover:border-white/10
-                  hover:shadow-lg
-                "
-              >
-                <div>
-                  <p className="text-xs text-slate-500 mb-1 tracking-wide">{label}</p>
-                  <p className="text-3xl font-semibold text-white tracking-tight">
-                    {String(countByStatus(key)).padStart(2, "0")}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400">
-                  {/* ✅ MUI icons use sx for sizing, not size prop */}
-                  <Icon sx={{ fontSize: 18 }} />
-                </div>
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-white text-black hover:bg-slate-200 transition"
+          >
+            <AddIcon sx={{ fontSize: 16 }} />
+            New Lead
+          </button>
+        </div>
+
+        {/* KPI CARDS */}
+        <div className="grid grid-cols-5 gap-6">
+          {STAT_CARDS.map(({ key, label, Icon, iconCls, bgCls }) => (
+            <div
+              key={key}
+              className={`
+                ${bgCls}
+                border border-white/5
+                rounded-2xl
+                px-6 py-6
+                flex items-center justify-between
+                transition-all duration-300
+                hover:scale-[1.02]
+              `}
+            >
+              <div>
+                <p className="text-xs text-slate-400 mb-1 tracking-wide">
+                  {label}
+                </p>
+
+                <p className={`text-3xl font-semibold ${iconCls}`}>
+                  {String(stats[key] || 0).padStart(2, "0")}
+                </p>
               </div>
+
+              <div
+                className={`
+                  w-10 h-10 rounded-xl
+                  ${bgCls}
+                  flex items-center justify-center
+                `}
+              >
+                <Icon className={iconCls} sx={{ fontSize: 18 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* FILTER + SEARCH */}
+        <div className="border-b border-white/5 pb-3 flex justify-between items-center">
+
+          <div className="flex gap-4">
+            {FILTER_TABS.map((tab, i) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(i)}
+                className={`px-4 py-2 text-sm border-b-2 ${
+                  activeTab === i
+                    ? "border-white text-white"
+                    : "border-transparent text-slate-500"
+                }`}
+              >
+                {tab}
+              </button>
             ))}
           </div>
 
-          {/* Tabs + Filters */}
-          <div className="border-b border-white/5 pb-3">
-            <div className="flex items-center justify-between">
-
-              {/* Tabs */}
-              <div className="flex items-center">
-                {FILTER_TABS.map((tab, i) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(i)}
-                    className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-all ${
-                      activeTab === i
-                        ? "border-white text-white"
-                        : "border-transparent text-slate-500 hover:text-slate-300"
-                    }`}
-                  >
-                    {tab}
-                    <span className="ml-1 text-xs opacity-50">
-                      {tabCount(tab, i)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Search + Filters */}
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <SearchIcon
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"
-                    sx={{ fontSize: 14 }}
-                  />
-                  <input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search leads"
-                    className="bg-[#141b26] border border-white/5 rounded-lg text-slate-300 text-sm pl-9 pr-4 py-2 w-56 outline-none focus:border-white/20 transition-all placeholder:text-slate-600"
-                  />
-                </div>
-
-                <select
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="bg-[#141b26] border border-white/5 rounded-lg text-sm text-slate-300 px-3 py-2 focus:border-white/20 outline-none"
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="yesterday">Yesterday</option>
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                  <option value="90days">Last 90 Days</option>
-                </select>
-
-                <select
-                  value={serviceSort}
-                  onChange={(e) => setServiceSort(e.target.value)}
-                  className="bg-[#141b26] border border-white/5 rounded-lg text-sm text-slate-300 px-3 py-2 focus:border-white/20 outline-none"
-                >
-                  <option value="all">All Services</option>
-                  <option value="Web Design">Web Design</option>
-                  <option value="App Design">App Design</option>
-                  <option value="Logo Design">Logo Design</option>
-                  <option value="Design System">Design System</option>
-                </select>
-              </div>
-
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <SearchIcon
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600"
+                sx={{ fontSize: 14 }}
+              />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search leads"
+                className="bg-[#141b26] border border-white/5 rounded-lg text-slate-300 text-sm pl-9 pr-4 py-2 w-56"
+              />
             </div>
           </div>
 
-          {/* Lead Cards */}
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-6 h-6 rounded-full border-2 border-slate-700 border-t-blue-500 animate-spin" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="flex items-center justify-center py-20 text-slate-600 text-sm">
-              No leads found
-            </div>
-          ) : (
-            <div className="grid grid-cols-4 gap-4">
-              {filtered.map((lead) => (
-                <LeadCard
-                  key={lead.id}
-                  lead={lead}
-                  onConverted={(id) =>
-                    setLeads((prev) => prev.filter((l) => l.id !== id))
-                  }
-                />
-              ))}
-            </div>
-          )}
-
         </div>
 
-        {/* ✅ Modal with fixed overlay */}
-        <NewLeadModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          onCreated={fetchLeads}
-        />
+        {/* LEAD GRID */}
+        {loading ? (
+          <div className="flex justify-center py-20">
+            <div className="w-6 h-6 border-2 border-slate-700 border-t-blue-500 rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-20 text-slate-600 text-sm">
+            No leads found
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 gap-4">
+            {filtered.map((lead) => (
+              <LeadCard
+                key={lead.id}
+                lead={lead}
+                onConverted={(id) =>
+                  setLeads((prev) => prev.filter((l) => l.id !== id))
+                }
+              />
+            ))}
+          </div>
+        )}
+
+        {/* PAGINATION */}
+        {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-10">
+
+          {/* Prev */}
+          <button
+            disabled={page === 1}
+            onClick={() => setPage(page - 1)}
+            className="px-4 py-2 rounded-lg text-sm border border-white/20 text-white disabled:opacity-40 hover:bg-white/10 transition"
+          >
+            Prev
+          </button>
+
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((p) => {
+              if (totalPages <= 5) return true;
+              return (
+                p === 1 ||
+                p === totalPages ||
+                Math.abs(p - page) <= 1
+              );
+            })
+            .map((p, index, arr) => {
+              const prev = arr[index - 1];
+
+              return (
+                <span key={p} className="flex items-center gap-2">
+                  {prev && p - prev > 1 && (
+                    <span className="text-white/60 px-2">...</span>
+                  )}
+
+                  <button
+                    onClick={() => setPage(p)}
+                    className={`px-3 py-2 rounded-lg text-sm transition ${
+                      page === p
+                        ? "bg-white text-black"
+                        : "border border-white/20 text-white hover:bg-white/10"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                </span>
+              );
+            })}
+
+          {/* Next */}
+          <button
+            disabled={page === totalPages}
+            onClick={() => setPage(page + 1)}
+            className="px-4 py-2 rounded-lg text-sm border border-white/20 text-white disabled:opacity-40 hover:bg-white/10 transition"
+          >
+            Next
+          </button>
+
+        </div>
+      )}
+            
+
+      </div>
+
+      <NewLeadModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreated={fetchLeads}
+      />
     </DashboardLayout>
   );
 }

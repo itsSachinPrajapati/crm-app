@@ -182,7 +182,6 @@ function Projects() {
                 <TableHead className="px-6 py-4">Project</TableHead>
                 <TableHead className="px-6 py-4">Client</TableHead>
                 <TableHead className="px-6 py-4">Total</TableHead>
-                <TableHead className="px-6 py-4">Paid</TableHead>
                 <TableHead className="px-6 py-4">Remaining</TableHead>
                 <TableHead className="px-6 py-4">Deadline</TableHead>
                 <TableHead className="px-6 py-4">Status</TableHead>
@@ -213,9 +212,7 @@ function Projects() {
                     ₹{formatCurrency(project.total_amount)}
                   </TableCell>
 
-                  <TableCell className="px-6 py-4">
-                   ₹{formatCurrency(project.total_paid)}
-                  </TableCell>
+               
 
                   <TableCell className="px-6 py-4 text-amber-400 font-semibold">
                     ₹{formatCurrency(project.remaining_amount)}
@@ -228,6 +225,8 @@ function Projects() {
                   <TableCell className="px-6 py-4 text-slate-400">
                     {project.status}
                   </TableCell>
+                  
+                  
 
                   <TableCell className="px-6 py-4 text-right">
                     <button
