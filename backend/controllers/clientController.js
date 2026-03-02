@@ -99,7 +99,21 @@ exports.getAllClients = async (req, res) => {
         : req.user.owner_id;
 
     const [clients] = await db.execute(
-      "SELECT * FROM clients WHERE user_id = ? ORDER BY created_at DESC",
+      `
+      SELECT 
+        c.*,
+
+        COUNT(CASE WHEN p.status = 'active' THEN 1 END) AS active_projects,
+        COUNT(CASE WHEN p.status = 'completed' THEN 1 END) AS completed_projects
+
+      FROM clients c
+      LEFT JOIN projects p ON p.client_id = c.id
+
+      WHERE c.user_id = ?
+
+      GROUP BY c.id
+      ORDER BY c.created_at DESC
+      `,
       [workspaceId]
     );
 

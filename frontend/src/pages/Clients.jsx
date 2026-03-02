@@ -167,6 +167,10 @@ function Clients() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogType, setDialogType] = useState(null); // "delete" | "update"
   const [selectedClient, setSelectedClient] = useState(null);
+  const [user, setUser] = useState(null);
+
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({});
 
   const [form, setForm] = useState({
     name: "",
@@ -194,10 +198,40 @@ function Clients() {
       setLoading(false);
     }
   };
-
+  const fetchUser = async () => {
+    try {
+      const res = await api.get("/users/me");
+      setUser(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  
   useEffect(() => {
     fetchClients();
+    fetchUser();
   }, []);
+  
+  useEffect(() => {
+    console.log("Logged in user:", user);
+  }, [user]);
+
+  const handleInlineSave = async (id) => {
+    try {
+      await api.put(`/clients/${id}`, editForm);
+  
+      setClients((prev) =>
+        prev.map((c) =>
+          c.id === id ? { ...c, ...editForm } : c
+        )
+      );
+  
+      setEditingId(null);
+  
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.name.trim()) return;
@@ -256,21 +290,32 @@ const inactiveClients = clients.filter(
   (c) => c.status === "inactive"
 ).length;
 
-const activeProjects = clients.filter(
-  (c) => c.project_status === "active"
-).length;
+const activeProjects = clients.reduce(
+  (sum, c) => sum + (c.active_projects || 0),
+  0
+);
 
-const completeProject = clients.filter(
-  (c) => c.project_status === "completed"
-).length;
+const completeProject = clients.reduce(
+  (sum, c) => sum + (c.completed_projects || 0),
+  0
+);
 
-  const stats = {
-    totalClients: clients.length,
-    activeClients,
-    inactiveClients,
-    activeProjects,
-    completeProject
-  };
+const isChanged = (client) => {
+  return (
+    client.name !== editForm.name ||
+    client.email !== editForm.email ||
+    client.phone !== editForm.phone ||
+    String(client.total_value) !== String(editForm.total_value)
+  );
+};
+
+const stats = {
+  totalClients: clients.length,
+  activeClients,
+  inactiveClients,
+  activeProjects,
+  completeProject
+};
 
   const filtered = clients.filter(
     (c) =>
@@ -349,6 +394,7 @@ const completeProject = clients.filter(
                   key={client.id}
                   className="border-t border-white/5 hover:bg-white/5 transition-colors"
                 >
+                  {/* COMPANY NAME */}
                   <TableCell className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div
@@ -359,102 +405,144 @@ const completeProject = clients.filter(
                         {getInitials(client.name)}
                       </div>
 
-                      <div>
+                      {editingId === client.id ? (
+                        <input
+                          value={editForm.name}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, name: e.target.value })
+                          }
+                          className="bg-neutral-800 text-white px-2 py-1 rounded-md text-sm"
+                        />
+                      ) : (
                         <p className="text-white font-medium leading-tight">
                           {client.name}
                         </p>
-                      </div>
+                      )}
                     </div>
                   </TableCell>
 
+                  {/* EMAIL */}
                   <TableCell className="px-6 py-4 text-slate-400">
-                    {client.email || "—"}
+                    {editingId === client.id ? (
+                      <input
+                        value={editForm.email}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, email: e.target.value })
+                        }
+                        className="bg-neutral-800 text-white px-2 py-1 rounded-md text-sm"
+                      />
+                    ) : (
+                      client.email || "—"
+                    )}
                   </TableCell>
 
+                  {/* PHONE */}
                   <TableCell className="px-6 py-4 text-slate-400">
-                    {client.phone || "—"}
+                    {editingId === client.id ? (
+                      <input
+                        value={editForm.phone}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, phone: e.target.value })
+                        }
+                        className="bg-neutral-800 text-white px-2 py-1 rounded-md text-sm"
+                      />
+                    ) : (
+                      client.phone || "—"
+                    )}
                   </TableCell>
 
+                  {/* TOTAL VALUE */}
                   <TableCell className="px-6 py-4">
-                    <span className="text-emerald-400 font-semibold">
-                      ₹{formatCurrency(client.total_value)}
-                    </span>
+                    {editingId === client.id ? (
+                      <input
+                        value={editForm.total_value}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, total_value: e.target.value })
+                        }
+                        className="bg-neutral-800 text-white px-2 py-1 rounded-md text-sm w-24"
+                      />
+                    ) : (
+                      <span className="text-emerald-400 font-semibold">
+                        ₹{formatCurrency(client.total_value)}
+                      </span>
+                    )}
                   </TableCell>
 
+                  {/* STATUS */}
                   <TableCell className="px-6 py-4">
                     <StatusBadge
                       active={!client.status || client.status === "active"}
                     />
                   </TableCell>
 
+                  {/* CREATED */}
                   <TableCell className="px-6 py-4 text-slate-500 text-xs">
                     {formatDate(client.created_at)}
                   </TableCell>
 
+                  {/* DECISION */}
                   <TableCell className="px-6 py-4 text-slate-500 text-xs">
-                    {(client.decision)}
+                    {client.decision}
                   </TableCell>
 
-                  <TableCell className="px-6 py-4 text-right space-x-3">
-                    {/* <button
-                      onClick={() => {
-                        setSelectedClient(client);
-                        setDialogType("update");
-                        setDialogOpen(true);
-                      }}
-                      className="text-blue-400 hover:text-blue-300 text-sm font-medium"
-                    >
-                      Update
-                    </button> */}
+                  {/* ACTIONS */}
+                  <TableCell className="px-6 py-4 text-right">
+                    <div className="flex justify-end gap-3">
 
-                    <button
-                      onClick={() => {
-                        setSelectedClient(client);
-                        setDialogType("delete");
-                        setDialogOpen(true);
-                      }}
-                      className="text-red-400 hover:text-red-300 text-sm font-medium"
-                    >
-                      Delete
-                    </button>
+                      {editingId === client.id ? (
+                        <>
+                          <button
+                            onClick={() => handleInlineSave(client.id)}
+                            disabled={!isChanged(client)}
+                            className={`text-sm font-medium ${
+                              isChanged(client)
+                                ? "text-emerald-400 hover:text-emerald-300"
+                                : "text-slate-600 cursor-not-allowed"
+                            }`}
+                          >
+                            Save
+                          </button>
 
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="text-slate-400 hover:text-white text-sm font-medium"
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingId(client.id);
+                              setEditForm({
+                                name: client.name,
+                                email: client.email,
+                                phone: client.phone,
+                                total_value: client.total_value,
+                              });
+                            }}
+                            className="text-blue-400 hover:text-blue-300 text-sm font-medium"
+                          >
+                            Update
+                          </button>
+
+                          {user?.role === "admin" && (
+                            <button
+                              onClick={() => {
+                                setSelectedClient(client);
+                                setDialogType("delete");
+                                setDialogOpen(true);
+                              }}
+                              className="text-red-400 hover:text-red-300 text-sm font-medium"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </TableCell>
-                  <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                    <AlertDialogContent className="bg-[#0f1623] border border-white/10 text-white">
-
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>
-                          {dialogType === "delete"
-                            ? "Delete Client?"
-                            : "Update Client?"}
-                        </AlertDialogTitle>
-
-                        <AlertDialogDescription className="text-slate-400">
-                          {dialogType === "delete"
-                            ? `Are you sure you want to delete ${selectedClient?.name}? This action cannot be undone.`
-                            : `Are you sure you want to update ${selectedClient?.name}?`}
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="bg-white/5 border border-white/10 text-slate-300">
-                          Cancel
-                        </AlertDialogCancel>
-
-                        <AlertDialogAction
-                          onClick={handleDialogConfirm}
-                          className={
-                            dialogType === "delete"
-                              ? "bg-red-500 hover:bg-red-600"
-                              : "bg-blue-500 hover:bg-blue-600"
-                          }
-                        >
-                          {dialogType === "delete" ? "Delete" : "Confirm"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-
-                    </AlertDialogContent>
-                  </AlertDialog>
                 </TableRow>
               ))}
             </TableBody>
