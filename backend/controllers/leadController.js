@@ -1,12 +1,14 @@
 const db = require("../config/db");
+const pool = require("../config/db");
 
 // ==========================
 // CREATE LEAD
 // ==========================
 exports.createLead = async (req, res) => {
   try {
-    const { name, email, phone, source, expected_value } = req.body;
+    const { name, email, phone, source, budget, status, service } = req.body;
 
+    // Basic validation
     if (!name) {
       return res.status(400).json({ message: "Name is required" });
     }
@@ -16,9 +18,20 @@ exports.createLead = async (req, res) => {
         ? req.user.id
         : req.user.owner_id;
 
-    const [result] = await db.execute(
-      "INSERT INTO leads (name, email, phone, status, source, expected_value, user_id) VALUES (?, ?, ?, 'new', ?, ?, ?)",
-      [name, email, phone, source || "manual", expected_value || 0, workspaceId]
+    const [result] = await pool.query(
+      `INSERT INTO leads 
+       (name, email, phone, source, budget, status, service, workspace_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        name,
+        email || null,
+        phone || null,
+        source || null,
+        budget || null,
+        status || "new",
+        service || null,
+        workspaceId
+      ]
     );
 
     return res.status(201).json({
@@ -27,30 +40,77 @@ exports.createLead = async (req, res) => {
     });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error(err);
+    return res.status(500).json({ error: "Failed to create lead" });
   }
 };
-
 // ==========================
 // GET LEADS
 // ==========================
 exports.getLeads = async (req, res) => {
   try {
-
     const workspaceId =
       req.user.role === "admin"
         ? req.user.id
         : req.user.owner_id;
 
-    const [results] = await db.execute(
-      "SELECT * FROM leads WHERE user_id = ? AND converted = 0",
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 18;
+    const offset = (page - 1) * limit;
+
+    // 🔹 1️⃣ Get paginated leads
+    const [leads] = await db.execute(
+      `
+      SELECT *
+      FROM leads
+      WHERE workspace_id = ?
+      AND converted = 0
+      ORDER BY created_at DESC
+      LIMIT ${limit} OFFSET ${offset}
+      `,
       [workspaceId]
     );
 
-    return res.status(200).json(results);
+    // 🔹 2️⃣ Get total count (for pagination)
+    const [[{ total }]] = await db.execute(
+      `
+      SELECT COUNT(*) as total
+      FROM leads
+      WHERE workspace_id = ?
+      AND converted = 0
+      `,
+      [workspaceId]
+    );
+
+    // 🔹 3️⃣ Get status stats (for KPI cards)
+    const [statsRaw] = await db.execute(
+      `
+      SELECT status, COUNT(*) as count
+      FROM leads
+      WHERE workspace_id = ?
+      AND converted = 0
+      GROUP BY status
+      `,
+      [workspaceId]
+    );
+
+    // Convert stats array to object
+    const stats = {};
+    statsRaw.forEach((row) => {
+      stats[row.status] = row.count;
+    });
+
+    return res.json({
+      leads,
+      total,
+      totalPages: Math.ceil(total / limit),
+      page,
+      stats
+    });
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error(err);
+    return res.status(500).json({ error: "Failed to fetch leads" });
   }
 };
 
@@ -74,7 +134,7 @@ exports.updateLead = async (req, res) => {
     }
 
     await db.execute(
-      "UPDATE leads SET status = ? WHERE id = ? AND user_id = ?",
+      "UPDATE leads SET status = ? WHERE id = ? AND workspace_id  = ?",
       [status, leadId, workspaceId]
     );
 
@@ -98,7 +158,7 @@ exports.deleteLead = async (req, res) => {
         : req.user.owner_id;
 
     await db.execute(
-      "DELETE FROM leads WHERE id = ? AND user_id = ?",
+      "DELETE FROM leads WHERE id = ? AND workspace_id  = ?",
       [leadId, workspaceId]
     );
 
@@ -119,7 +179,7 @@ exports.getLeadById = async (req, res) => {
         : req.user.owner_id;
 
     const [rows] = await db.execute(
-      "SELECT * FROM leads WHERE id = ? AND user_id = ?",
+      "SELECT * FROM leads WHERE id = ? AND workspace_id  = ?",
       [leadId, workspaceId]
     );
 
@@ -144,7 +204,7 @@ exports.updateLeadStatus = async (req, res) => {
         : req.user.owner_id;
 
     await db.execute(
-      "UPDATE leads SET status = ? WHERE id = ? AND user_id = ?",
+      "UPDATE leads SET status = ? WHERE id = ? AND workspace_id  = ?",
       [status, id, workspaceId]
     );
 
