@@ -4,13 +4,12 @@ const authMiddleware = require("../middleware/authMiddleware");
 
 const {
   createPayment,
-  getProjectPayments
+  getProjectPayments,
+  deletePayment
 } = require("../controllers/paymentsController");
 
-// Create payment
 router.post("/", authMiddleware, createPayment);
-
-// Get payments for specific project
 router.get("/project/:id", authMiddleware, getProjectPayments);
+router.delete("/:id", authMiddleware, deletePayment);
 
 module.exports = router;
