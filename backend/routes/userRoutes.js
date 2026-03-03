@@ -10,5 +10,6 @@ router.get("/team", auth, adminOnly, userController.getTeam);
 router.post("/team", auth, adminOnly, userController.createEmployee);
 router.put("/change-password", auth, userController.changePassword);
 router.get("/", auth, userController.getWorkspaceUsers);
+router.delete("/team/:id", auth, adminOnly, userController.deleteTeamMember);
 
 module.exports = router;

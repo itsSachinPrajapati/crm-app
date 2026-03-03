@@ -14,12 +14,44 @@ exports.createProject = async (req, res) => {
       start_date,
       deadline
     } = req.body;
+    const numericBudget = Number(budget);
 
-    if (!name || !client_id || budget == null || !start_date || !deadline) {
-      return res.status(400).json({
-        message: "All required fields must be filled"
-      });
-    }
+   // Required fields
+      if (!name || !client_id || budget == null || !start_date || !deadline) {
+        return res.status(400).json({
+          message: "All required fields must be filled"
+        });
+      }
+
+      // Budget validation
+
+
+      if (isNaN(numericBudget)) {
+        return res.status(400).json({
+          message: "Budget must be a number"
+        });
+      }
+      
+      if (numericBudget < 0) {
+        return res.status(400).json({
+          message: "Budget cannot be negative"
+        });
+      }
+
+      // Date validation
+      if (new Date(deadline) < new Date(start_date)) {
+        return res.status(400).json({
+          message: "Deadline cannot be before start date"
+        });
+      }
+
+      // Status validation
+      const allowedStatus = ["active", "completed", "on_hold"];
+      if (status && !allowedStatus.includes(status)) {
+        return res.status(400).json({
+          message: "Invalid status value"
+        });
+      }
 
     const workspaceId =
       req.user.role === "admin"
@@ -77,8 +109,8 @@ exports.getFullProject = async (req, res) => {
         ? req.user.id
         : req.user.owner_id;
 
-    // 🔹 Project with Financials
-    const [project] = await pool.query(
+    // 🔹 Project with Financial Summary
+    const [projectRows] = await pool.query(
       `SELECT 
           p.*,
           c.name AS client_name,
@@ -94,9 +126,11 @@ exports.getFullProject = async (req, res) => {
       [id, workspaceId]
     );
 
-    if (project.length === 0) {
+    if (projectRows.length === 0) {
       return res.status(404).json({ message: "Project not found" });
     }
+
+    const project = projectRows[0];
 
     // 🔹 Requirements
     const [requirements] = await pool.query(
@@ -153,18 +187,23 @@ exports.getFullProject = async (req, res) => {
        ORDER BY a.created_at DESC`,
       [id]
     );
+
     // 🔹 Payments
     const [payments] = await pool.query(
       `SELECT id, amount, payment_type, status, payment_date, created_at
-      FROM payments
-      WHERE project_id = ?
-      AND workspace_id = ?
-      ORDER BY payment_date DESC`,
+       FROM payments
+       WHERE project_id = ?
+       AND workspace_id = ?
+       ORDER BY payment_date DESC`,
       [id, workspaceId]
     );
 
     res.json({
-      project: project[0],
+      project: {
+        ...project,
+      },
+      total_paid: Number(project.total_paid),
+      remaining_amount: Number(project.remaining_amount),
       requirements,
       features,
       milestones,
@@ -253,26 +292,35 @@ exports.getProjectById = async (req, res) => {
         const currentDeadline = new Date(project.deadline);
         const newDeadline = new Date(deadline);
         const today = new Date();
-  
-        // Normalize time
+
         currentDeadline.setHours(0, 0, 0, 0);
         newDeadline.setHours(0, 0, 0, 0);
         today.setHours(0, 0, 0, 0);
-  
+
         // ❌ Cannot shorten or keep same
         if (newDeadline <= currentDeadline) {
           return res.status(400).json({
             message: "Deadline can only be extended forward"
           });
         }
-  
+
         // ❌ Cannot set in past
         if (newDeadline < today) {
           return res.status(400).json({
             message: "Deadline cannot be set in the past"
           });
         }
-  
+
+        // ❌ Must extend at least 3 days
+        const diffTime = newDeadline - currentDeadline;
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+
+        if (diffDays < 3) {
+          return res.status(400).json({
+            message: "Deadline must be extended by at least 3 days"
+          });
+        }
+          
         await pool.query(
           `UPDATE projects
            SET deadline = ?
@@ -288,14 +336,46 @@ exports.getProjectById = async (req, res) => {
       // ====================================================
       // 👑 ADMIN LOGIC
       // ====================================================
-  
+
+      const allowedStatus = ["active", "completed", "on_hold"];
+
+      if (status && !allowedStatus.includes(status)) {
+        return res.status(400).json({
+          message: "Invalid status value"
+        });
+      }
+
+      if (deadline && start_date && new Date(deadline) < new Date(start_date)) {
+        return res.status(400).json({
+          message: "Deadline cannot be before start date"
+        });
+      
+      }
+      // If budget is being updated
+      if (req.body.budget !== undefined) {
+        const numericBudget = Number(req.body.budget);
+
+        if (isNaN(numericBudget)) {
+          return res.status(400).json({
+            message: "Budget must be a number"
+          });
+        }
+
+        if (numericBudget < 0) {
+          return res.status(400).json({
+            message: "Budget cannot be negative"
+          });
+        }
+      }
+      
       await pool.query(
         `UPDATE projects
          SET name = ?,
              description = ?,
              status = ?,
              start_date = ?,
-             deadline = ?
+             deadline = ?,
+             budget =
          WHERE id = ? AND workspace_id = ?`,
         [
           name ?? project.name,

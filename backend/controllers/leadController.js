@@ -9,8 +9,8 @@ exports.createLead = async (req, res) => {
     const { name, email, phone, source, budget, status, service } = req.body;
 
     // Basic validation
-    if (!name) {
-      return res.status(400).json({ message: "Name is required" });
+    if (!name || !email) {
+      return res.status(400).json({ message: "Name and email are required" });
     }
 
     const workspaceId =
@@ -119,23 +119,73 @@ exports.getLeads = async (req, res) => {
 // ==========================
 exports.updateLead = async (req, res) => {
   try {
-    const { status } = req.body;
     const leadId = req.params.id;
+    const updates = req.body;
 
     const workspaceId =
       req.user.role === "admin"
         ? req.user.id
         : req.user.owner_id;
 
-    const allowedStatus = ["new", "contacted", "qualified", "closed", "lost"];
-
-    if (!allowedStatus.includes(status)) {
-      return res.status(400).json({ message: "Invalid status value" });
+    if (!updates || Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: "No fields provided for update" });
     }
 
-    await db.execute(
-      "UPDATE leads SET status = ? WHERE id = ? AND workspace_id  = ?",
-      [status, leadId, workspaceId]
+    // Check if lead exists first
+    const [existing] = await db.execute(
+      "SELECT status FROM leads WHERE id = ? AND workspace_id = ?",
+      [leadId, workspaceId]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({ message: "Lead not found" });
+    }
+
+    const currentStatus = existing[0].status;
+
+    const allowedFields = ["name", "email", "phone", "source", "status"];
+    const allowedStatus = ["new", "contacted", "qualified", "closed", "lost"];
+
+    const fields = [];
+    const values = [];
+
+    for (const key of Object.keys(updates)) {
+      if (!allowedFields.includes(key)) {
+        return res.status(400).json({ message: `Invalid field: ${key}` });
+      }
+
+      // 🔥 Status validation + pipeline restriction
+      if (key === "status") {
+        const newStatus = updates.status;
+
+        if (!allowedStatus.includes(newStatus)) {
+          return res.status(400).json({ message: "Invalid status value" });
+        }
+
+        const pipeline = {
+          new: ["contacted"],
+          contacted: ["qualified"],
+          qualified: ["closed", "lost"],
+          closed: [],
+          lost: []
+        };
+
+        if (!pipeline[currentStatus].includes(newStatus)) {
+          return res.status(400).json({
+            message: `Invalid status transition from ${currentStatus} to ${newStatus}`
+          });
+        }
+      }
+
+      fields.push(`${key} = ?`);
+      values.push(updates[key]);
+    }
+
+    values.push(leadId, workspaceId);
+
+    const [result] = await db.execute(
+      `UPDATE leads SET ${fields.join(", ")} WHERE id = ? AND workspace_id = ?`,
+      values
     );
 
     return res.status(200).json({ message: "Lead updated successfully" });

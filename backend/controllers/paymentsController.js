@@ -90,7 +90,7 @@ exports.getProjectPayments = async (req, res) => {
         ? req.user.id
         : req.user.owner_id;
 
-    // Get project budget
+    // 1️⃣ Get project budget
     const [projectRows] = await pool.query(
       "SELECT budget FROM projects WHERE id = ? AND workspace_id = ?",
       [id, workspaceId]
@@ -99,21 +99,10 @@ exports.getProjectPayments = async (req, res) => {
     if (projectRows.length === 0) {
       return res.status(404).json({ message: "Project not found" });
     }
-    
-    const remaining = Math.max(totalBudget - totalPaid, 0);
-    
 
-    // Get payments
-    const [payments] = await pool.query(
-      `SELECT *
-       FROM payments
-       WHERE project_id = ?
-       AND workspace_id = ?
-       ORDER BY created_at DESC`,
-      [id, workspaceId]
-    );
+    const totalBudget = Number(projectRows[0].budget);
 
-    // Calculate total paid
+    // 2️⃣ Get total paid
     const [sumRows] = await pool.query(
       `SELECT IFNULL(SUM(amount), 0) AS total_paid
        FROM payments
@@ -123,8 +112,20 @@ exports.getProjectPayments = async (req, res) => {
       [id, workspaceId]
     );
 
-    const totalBudget = Number(projectRows[0].budget);
     const totalPaid = Number(sumRows[0].total_paid);
+
+    // 3️⃣ Calculate remaining
+    const remaining = Math.max(totalBudget - totalPaid, 0);
+
+    // 4️⃣ Get payment list
+    const [payments] = await pool.query(
+      `SELECT *
+       FROM payments
+       WHERE project_id = ?
+       AND workspace_id = ?
+       ORDER BY created_at DESC`,
+      [id, workspaceId]
+    );
 
     res.json({
       payments,

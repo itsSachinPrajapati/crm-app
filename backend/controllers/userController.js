@@ -145,3 +145,41 @@ exports.changePassword = async (req, res) => {
       res.status(500).json({ message: "Server error" });
     }
   };
+
+  exports.deleteTeamMember = async (req, res) => {
+    try {
+  
+      // 🔒 Only admin can delete team members
+      if (req.user.role !== "admin") {
+        return res.status(403).json({
+          message: "Only admin can delete team members"
+        });
+      }
+  
+      const { id } = req.params;
+  
+      const workspaceId = req.user.id;
+  
+      // ❌ Prevent admin deleting themselves
+      if (Number(id) === req.user.id) {
+        return res.status(400).json({
+          message: "Admin cannot delete their own account"
+        });
+      }
+  
+      const [result] = await pool.query(
+        "DELETE FROM users WHERE id = ? AND owner_id  = ?",
+        [id, workspaceId]
+      );
+  
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Employee not found" });
+      }
+  
+      res.json({ message: "Employee terminated successfully" });
+  
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Server error" });
+    }
+  };
