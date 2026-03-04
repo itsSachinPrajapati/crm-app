@@ -20,9 +20,18 @@ exports.createClient = async (req, res) => {
         : req.user.owner_id;
 
     await db.execute(
-      "INSERT INTO clients (name, email, phone, total_value, workspace_id) VALUES (?, ?, ?, ?, ?)",
-      [name, email, phone, total_value || 0, workspaceId]
-    );
+        `INSERT INTO clients 
+         (name, email, phone, total_value, workspace_id, lead_id)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          lead.name,
+          lead.email,
+          lead.phone,
+          lead.budget || 0,
+          workspaceId,
+          leadId
+        ]
+      );
 
     res.status(201).json({
       success: true,
