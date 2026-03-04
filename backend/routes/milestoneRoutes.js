@@ -6,8 +6,7 @@ const authMiddleware = require("../middleware/authMiddleware");
 
 router.post("/", authMiddleware, milestoneController.createMilestone);
 router.get("/", authMiddleware, milestoneController.getMilestones);
-router.patch("/:id/status", authMiddleware, milestoneController.updateMilestoneStatus);
+router.put("/:id", authMiddleware, milestoneController.updateMilestone);
 router.delete("/:id", authMiddleware, milestoneController.deleteMilestone);
-router.put("/:id", authMiddleware, milestoneController.deleteMilestone);
 
 module.exports = router;

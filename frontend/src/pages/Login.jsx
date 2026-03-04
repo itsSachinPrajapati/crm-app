@@ -89,17 +89,6 @@ function Login() {
 
           </form>
 
-          {/* Dev reset — visually subtle */}
-          <button
-            type="button"
-            onClick={async () => {
-              await api.post("/auth/reset-admin");
-              alert("Password reset to Admin@123");
-            }}
-            className="w-full mt-3 py-1.5 text-xs text-slate-600 hover:text-slate-400 bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.05] rounded-lg transition-all duration-150"
-          >
-            Reset Admin Password (Dev)
-          </button>
 
           <div className="mt-5 pt-5 border-t border-white/[0.06] text-center">
             <p className="text-xs text-slate-500">

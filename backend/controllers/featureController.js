@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { logProjectActivity } = require("../utils/activityLogger");
 
 // Create Feature
 exports.createFeature = async (req, res) => {
@@ -10,13 +11,25 @@ exports.createFeature = async (req, res) => {
       return res.status(400).json({ message: "Title required" });
     }
 
-    await pool.query(
+    const [result] = await pool.query(
       `INSERT INTO project_features (project_id, title, created_by)
        VALUES (?, ?, ?)`,
       [projectId, title, req.user.id]
     );
 
-    res.json({ message: "Feature added successfully" });
+    // Structured logging
+    await logProjectActivity({
+      projectId,
+      userId: req.user.id,
+      actionType: "FEATURE_ADDED",
+      metadata: { title },
+    });
+
+    res.json({
+      id: result.insertId,
+      message: "Feature added successfully",
+    });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
@@ -45,14 +58,33 @@ exports.getFeatures = async (req, res) => {
 // Delete Feature
 exports.deleteFeature = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { projectId, id } = req.params;
+
+    const [feature] = await pool.query(
+      `SELECT title FROM project_features WHERE id = ?`,
+      [id]
+    );
+
+    if (feature.length === 0) {
+      return res.status(404).json({ message: "Feature not found" });
+    }
 
     await pool.query(
       `DELETE FROM project_features WHERE id = ?`,
       [id]
     );
 
-    res.json({ message: "Feature deleted" });
+    await logProjectActivity({
+      projectId,
+      userId: req.user.id,
+      actionType: "FEATURE_DELETED",
+      metadata: {
+        title: feature[0].title,
+      },
+    });
+
+    res.json({ message: "Feature deleted successfully" });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });

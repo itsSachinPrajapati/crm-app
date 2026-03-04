@@ -73,6 +73,7 @@ function ProjectDetail() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(5);
+  const [submitting, setSubmitting] = useState(false);
 
   const [addingType, setAddingType] = useState(null);
   const [newItemText, setNewItemText] = useState("");
@@ -151,7 +152,7 @@ function ProjectDetail() {
       if (editingMilestoneId === "new") {
         await api.post(`/projects/${id}/milestones`, milestoneForm);
       } else {
-        await api.patch(
+        await api.put(
           `/projects/${id}/milestones/${editingMilestoneId}`,
           milestoneForm
         );
@@ -186,7 +187,7 @@ function ProjectDetail() {
     try {
       await api.post(`/projects/${id}/members`, {
         user_id: user.id,
-        role: user.role || "Member",
+        role: user.role || "employee",
       });
       fetchProject();
     } catch (err) {
@@ -315,13 +316,27 @@ function ProjectDetail() {
                           value={newItemText}
                           onChange={(e) => setNewItemText(e.target.value)}
                           onKeyDown={async (e) => {
-                            if (e.key === "Enter" && newItemText.trim()) {
-                              await api.post(`/projects/${id}/features`, { title: newItemText });
-                              setAddingType(null);
-                              fetchProject();
+                            if (e.key === "Enter" && newItemText.trim() && !submitting) {
+                              try {
+                                setSubmitting(true);
+                          
+                                await api.post(`/projects/${id}/features`, {
+                                  title: newItemText.trim(),
+                                });
+                          
+                                setAddingType(null);
+                                setNewItemText("");
+                                fetchProject();
+                              } finally {
+                                setSubmitting(false);
+                              }
                             }
-                            if (e.key === "Escape") setAddingType(null);
+                          
+                            if (e.key === "Escape") {
+                              setAddingType(null);
+                            }
                           }}
+                          
                           className={inputCls}
                           placeholder="New feature..."
                         />

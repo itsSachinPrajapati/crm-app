@@ -4,70 +4,60 @@ const pool = require("../config/db");
  * ADD MEMBER TO PROJECT
  */
 exports.addMember = async (req, res) => {
-    try {
-      const { projectId } = req.params;
-      const { user_id, role } = req.body;
-  
-      const workspaceId =
-        req.user.role === "admin"
-          ? req.user.id
-          : req.user.owner_id;
-  
-      // 1️⃣ Check project
-      const [project] = await pool.query(
-        "SELECT id FROM projects WHERE id = ? AND owner_id = ?",
-        [projectId, workspaceId]
-      );
-  
-      if (project.length === 0) {
-        return res.status(403).json({ message: "Unauthorized project access" });
-      }
-  
-      // 2️⃣ Check user in same workspace
-      const [user] = await pool.query(
-        `SELECT id FROM users 
-         WHERE id = ? 
-         AND (id = ? OR owner_id = ?)`,
-        [user_id, workspaceId, workspaceId]
-      );
-  
-      if (user.length === 0) {
-        return res.status(403).json({ message: "User not in same workspace" });
-      }
-  
-      // 3️⃣ Check duplicate manually (clean error instead of DB crash)
-      const [existing] = await pool.query(
-        "SELECT id FROM project_members WHERE project_id = ? AND user_id = ?",
-        [projectId, user_id]
-      );
-  
-      if (existing.length > 0) {
-        return res.status(400).json({ message: "User already assigned to this project" });
-      }
-  
-      // 4️⃣ Insert
-      await pool.query(
-        `INSERT INTO project_members 
-         (project_id, user_id, role, assigned_by)
-         VALUES (?, ?, ?, ?)`,
-        [projectId, user_id, role || "member", req.user.id]
-      );
-  
-      // 5️⃣ Log
-      await pool.query(
-        `INSERT INTO project_activity_logs 
-         (project_id, user_id, action)
-         VALUES (?, ?, ?)`,
-        [projectId, req.user.id, `Added user ${user_id} to project`]
-      );
-  
-      res.status(201).json({ message: "Member added successfully" });
-  
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Server error" });
+  try {
+    const { projectId } = req.params;
+    const { user_id, role } = req.body;
+
+    const workspaceId =
+      req.user.role === "admin"
+        ? req.user.id
+        : req.user.owner_id;
+
+    // 1️⃣ Check project belongs to workspace
+    const [project] = await pool.query(
+      "SELECT id FROM projects WHERE id = ? AND workspace_id = ?",
+      [projectId, workspaceId]
+    );
+
+    if (project.length === 0) {
+      return res.status(403).json({ message: "Unauthorized project access" });
     }
-  };
+
+    // 2️⃣ Check employee belongs to same workspace
+    const [user] = await pool.query(
+      "SELECT id FROM users WHERE id = ? AND owner_id = ?",
+      [user_id, workspaceId]
+    );
+
+    if (user.length === 0) {
+      return res.status(403).json({ message: "User not in same workspace" });
+    }
+
+    // 3️⃣ Prevent duplicate
+    const [existing] = await pool.query(
+      "SELECT id FROM project_members WHERE project_id = ? AND user_id = ?",
+      [projectId, user_id]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ message: "User already assigned" });
+    }
+
+    // 4️⃣ Insert
+    await pool.query(
+      `INSERT INTO project_members 
+       (project_id, user_id, role, assigned_by)
+       VALUES (?, ?, ?, ?)`,
+      [projectId, user_id, role || "member", req.user.id]
+    );
+
+    res.status(201).json({ message: "Member added successfully" });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
   exports.getMembers = async (req, res) => {
     try {

@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { logProjectActivity } = require("../utils/activityLogger");
 
 /**
  * CREATE MILESTONE
@@ -12,7 +13,6 @@ exports.createMilestone = async (req, res) => {
       return res.status(400).json({ message: "Title is required" });
     }
 
-    // Check project exists
     const [project] = await pool.query(
       "SELECT id FROM projects WHERE id = ?",
       [projectId]
@@ -29,13 +29,12 @@ exports.createMilestone = async (req, res) => {
       [projectId, title, description || null, due_date || null, req.user.id]
     );
 
-    // 🔥 Log activity
-    await pool.query(
-      `INSERT INTO project_activity_logs 
-       (project_id, user_id, action)
-       VALUES (?, ?, ?)`,
-      [projectId, req.user.id, `Created milestone: ${title}`]
-    );
+    await logProjectActivity({
+      projectId,
+      userId: req.user.id,
+      actionType: "MILESTONE_CREATED",
+      metadata: { title }
+    });
 
     res.status(201).json({
       id: result.insertId,
@@ -80,20 +79,58 @@ exports.getMilestones = async (req, res) => {
 /**
  * UPDATE MILESTONE STATUS
  */
-exports.updateMilestoneStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
 
-    const allowed = ["pending", "in_progress", "completed"];
-    if (!allowed.includes(status)) {
+/**
+ * UPDATE MILESTONE (ALL FIELDS)
+ */
+exports.updateMilestone = async (req, res) => {
+  try {
+    const { id, projectId } = req.params;
+    const { title, due_date, status } = req.body;
+
+    const allowedStatus = ["pending", "in_progress", "completed"];
+
+    const [milestone] = await pool.query(
+      `SELECT * FROM project_milestones
+       WHERE id = ? AND project_id = ?`,
+      [id, projectId]
+    );
+
+    if (milestone.length === 0) {
+      return res.status(404).json({ message: "Milestone not found" });
+    }
+
+    const current = milestone[0];
+
+    // Validate status if provided
+    if (status && !allowedStatus.includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
 
     await pool.query(
-      "UPDATE project_milestones SET status = ? WHERE id = ?",
-      [status, id]
+      `UPDATE project_milestones
+       SET title = ?,
+           due_date = ?,
+           status = ?
+       WHERE id = ? AND project_id = ?`,
+      [
+        title ?? current.title,
+        due_date ?? current.due_date,
+        status ?? current.status,
+        id,
+        projectId
+      ]
     );
+
+    await logProjectActivity({
+      projectId,
+      userId: req.user.id,
+      actionType: "MILESTONE_UPDATED",
+      metadata: {
+        title: title ?? current.title,
+        status: status ?? current.status
+      }
+    });
 
     res.json({ message: "Milestone updated successfully" });
 
@@ -109,12 +146,29 @@ exports.updateMilestoneStatus = async (req, res) => {
  */
 exports.deleteMilestone = async (req, res) => {
   try {
-    const { id } = req.params;
+    const { id, projectId } = req.params;
+
+    const [milestone] = await pool.query(
+      `SELECT title FROM project_milestones 
+       WHERE id = ? AND project_id = ?`,
+      [id, projectId]
+    );
+
+    if (milestone.length === 0) {
+      return res.status(404).json({ message: "Milestone not found" });
+    }
 
     await pool.query(
-      "DELETE FROM project_milestones WHERE id = ?",
+      `DELETE FROM project_milestones WHERE id = ?`,
       [id]
     );
+
+    await logProjectActivity({
+      projectId,
+      userId: req.user.id,
+      actionType: "MILESTONE_DELETED",
+      metadata: { title: milestone[0].title }
+    });
 
     res.json({ message: "Milestone deleted successfully" });
 
@@ -123,44 +177,3 @@ exports.deleteMilestone = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-exports.updateMilestoneStatus = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { status } = req.body;
-      const { projectId } = req.params;
-  
-      const allowed = ["pending", "in_progress", "completed"];
-      if (!allowed.includes(status)) {
-        return res.status(400).json({ message: "Invalid status" });
-      }
-  
-      // Get milestone title first
-      const [milestone] = await pool.query(
-        "SELECT title FROM project_milestones WHERE id = ?",
-        [id]
-      );
-  
-      if (milestone.length === 0) {
-        return res.status(404).json({ message: "Milestone not found" });
-      }
-  
-      await pool.query(
-        "UPDATE project_milestones SET status = ? WHERE id = ?",
-        [status, id]
-      );
-  
-    
-      await pool.query(
-        `INSERT INTO project_activity_logs (project_id, user_id, action)
-         VALUES (?, ?, ?)`,
-        [projectId, req.user.id, `Updated milestone "${milestone[0].title}" to ${status}`]
-      );
-  
-      res.json({ message: "Milestone updated successfully" });
-  
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: "Server error" });
-    }
-  };

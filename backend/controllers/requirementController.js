@@ -19,7 +19,7 @@ exports.createRequirement = async (req, res) => {
 
     // Validate project belongs to workspace
     const [project] = await pool.query(
-      "SELECT id FROM projects WHERE id = ? AND owner_id = ?",
+      "SELECT id FROM projects WHERE id = ? AND workspace_id = ?",
       [projectId, workspaceId]
     );
 

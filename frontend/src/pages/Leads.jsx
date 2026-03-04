@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import DashboardLayout from "../layout/DashboardLayout";
 import api from "../services/api";
-import { useRef } from "react";
 
 import AddIcon from "@mui/icons-material/Add";
 import SearchIcon from "@mui/icons-material/Search";
@@ -31,44 +30,210 @@ const STAT_CARDS = [
 ];
 
 const STATUS_STYLE = {
-  new: "text-blue-400",
-  contacted: "text-yellow-400",
-  qualified: "text-violet-400",
+  new:             "text-blue-400",
+  contacted:       "text-yellow-400",
+  follow_up:       "text-sky-400",
+  qualified:       "text-violet-400",
+  proposal_sent:   "text-orange-400",
   "proposal sent": "text-orange-400",
-  closed: "text-emerald-400",
-  lost: "text-red-400",
+  negotiation:     "text-pink-400",
+  closed:          "text-emerald-400",
+  lost:            "text-red-400",
 };
 const STATUS_DOT = {
-  new: "bg-blue-400",
-  contacted: "bg-yellow-400",
-  qualified: "bg-violet-400",
+  new:             "bg-blue-400",
+  contacted:       "bg-yellow-400",
+  follow_up:       "bg-sky-400",
+  qualified:       "bg-violet-400",
+  proposal_sent:   "bg-orange-400",
   "proposal sent": "bg-orange-400",
-  closed: "bg-emerald-400",
-  lost: "bg-red-400",
+  negotiation:     "bg-pink-400",
+  closed:          "bg-emerald-400",
+  lost:            "bg-red-400",
 };
 const STATUS_BG = {
-  new: "bg-blue-400/10",
-  contacted: "bg-yellow-400/10",
-  qualified: "bg-violet-400/10",
+  new:             "bg-blue-400/10",
+  contacted:       "bg-yellow-400/10",
+  follow_up:       "bg-sky-400/10",
+  qualified:       "bg-violet-400/10",
+  proposal_sent:   "bg-orange-400/10",
   "proposal sent": "bg-orange-400/10",
-  closed: "bg-emerald-400/10",
-  lost: "bg-red-400/10",
+  negotiation:     "bg-pink-400/10",
+  closed:          "bg-emerald-400/10",
+  lost:            "bg-red-400/10",
 };
 
 const FILTER_TABS = ["All", "New", "Contacted", "Qualified", "Working", "Proposal Sent"];
-const STATUSES = ["new", "contacted", "qualified", "proposal sent", "closed"];
+
+// ── Pipeline order — must match backend exactly ───────────────────────────────
+const PIPELINE_ORDER = [
+  "new",
+  "contacted",
+  "follow_up",
+  "qualified",
+  "proposal_sent",
+  "negotiation",
+  "closed",
+  "lost",
+];
+
+const PIPELINE_LABELS = {
+  new:           "New",
+  contacted:     "Contacted",
+  follow_up:     "Follow Up",
+  qualified:     "Qualified",
+  proposal_sent: "Proposal Sent",
+  negotiation:   "Negotiation",
+  closed:        "Closed",
+  lost:          "Lost",
+};
+
+// Only allow moving to the immediate next stage (or lost from anywhere)
+function getAllowedStatuses(current) {
+  const idx = PIPELINE_ORDER.indexOf(current);
+  if (idx === -1) return PIPELINE_ORDER;
+  const allowed = new Set([PIPELINE_ORDER[idx]]);
+  if (idx + 1 < PIPELINE_ORDER.length) allowed.add(PIPELINE_ORDER[idx + 1]);
+  allowed.add("lost");
+  return PIPELINE_ORDER.filter((s) => allowed.has(s));
+}
+
+const SERVICES = [
+  "AI Customer Support Bot",
+  "AI Marketing Automation",
+  "AI Workflow Automation",
+  "AI Sales Funnel System",
+  "Custom GPT Integration",
+  "AI Chatbot Development",
+  "AI Voice Agent Setup",
+  "AI Website Builder",
+  "AI Appointment Booking System",
+  "AI UGC Ads Creation",
+  "AI CRM Automation",
+  "Lead Generation AI System",
+];
+
+const SOURCES = ["LinkedIn", "Manual", "Website", "Referral"];
 
 const sharedInputCls =
-  "w-full px-3 py-2 bg-white/[0.04] border border-white/10 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 transition-all duration-200";
+  "w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-lg text-sm text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500/50 focus:bg-white/[0.06] transition-all duration-200";
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// ─── Custom Dropdown ──────────────────────────────────────────────────────────
+// Supports: string[] or { value, label, disabled? }[]
+// No overflow-x — labels wrap naturally
+
+function CustomSelect({ value, onChange, options, placeholder = "Select", error }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const normalize = (o) =>
+    typeof o === "string"
+      ? { value: o, label: o, disabled: false }
+      : { disabled: false, ...o };
+
+  const found = options.map(normalize).find((o) => o.value === value);
+  const displayLabel = found?.label ?? null;
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`w-full px-3.5 py-2.5 bg-white/[0.04] border rounded-lg text-sm text-left flex items-center justify-between gap-2 transition-all duration-200 focus:outline-none ${
+          error
+            ? "border-red-500/40"
+            : open
+            ? "border-indigo-500/50 bg-white/[0.06]"
+            : "border-white/10 hover:border-white/20"
+        }`}
+      >
+        <span className={`truncate ${displayLabel ? "text-white" : "text-slate-600"}`}>
+          {displayLabel || placeholder}
+        </span>
+        <svg
+          className={`w-4 h-4 text-slate-500 flex-shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Panel — overflow-x hidden, labels wrap */}
+      {open && (
+        <div className="absolute z-[60] top-full mt-1.5 w-full bg-[#0d1117] border border-white/[0.08] rounded-xl shadow-2xl shadow-black/70 overflow-hidden">
+          <div className="max-h-52 overflow-y-auto overflow-x-hidden py-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {options.map(normalize).map((opt) => {
+              const isActive   = opt.value === value;
+              const isDisabled = opt.disabled;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => { if (!isDisabled) { onChange(opt.value); setOpen(false); } }}
+                  className={`w-full text-left px-3.5 py-2 text-sm flex items-start gap-2 transition-colors duration-100 ${
+                    isDisabled
+                      ? "text-slate-600 cursor-not-allowed"
+                      : isActive
+                      ? "bg-indigo-600/20 text-indigo-300"
+                      : "text-slate-300 hover:bg-white/[0.06] hover:text-white"
+                  }`}
+                >
+                  {/* Lock icon for disabled pipeline stages */}
+                  {isDisabled && (
+                    <svg className="w-3 h-3 text-slate-700 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  )}
+                  {/* Label: whitespace-normal so long names wrap instead of scroll */}
+                  <span className="flex-1 whitespace-normal break-words leading-snug">{opt.label}</span>
+                  {isActive && !isDisabled && (
+                    <svg className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Field wrapper ────────────────────────────────────────────────────────────
+
+function Field({ label, error, children }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label className="text-xs text-slate-500 uppercase tracking-widest">{label}</label>
+        {error && <span className="text-xs text-red-400">{error}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ─── Status Badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }) {
   const key = status?.toLowerCase() ?? "";
+  const label = PIPELINE_LABELS[key] ?? key.replace(/_/g, " ");
   return (
     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_STYLE[key] ?? "text-slate-400"} ${STATUS_BG[key] ?? "bg-slate-400/10"}`}>
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[key] ?? "bg-slate-400"}`} />
-      {status}
+      {label}
     </span>
   );
 }
@@ -76,86 +241,77 @@ function StatusBadge({ status }) {
 // ─── Lead Card ────────────────────────────────────────────────────────────────
 
 function LeadCard({ lead, onConverted }) {
-  const [status, setStatus] = useState(lead.status?.toLowerCase() || "new");
-  const [notes, setNotes] = useState([]);
-  const [proposals, setProposals] = useState([]);
-  const [newNote, setNewNote] = useState("");
-  const [addingNote, setAddingNote] = useState(false);
-  const notesEndRef = useRef(null);
-  const [editingStatus, setEditingStatus] = useState(false);
+  const [status, setStatus]               = useState(lead.status?.toLowerCase() || "new");
+  const [notes, setNotes]                 = useState([]);
+  const [proposals, setProposals]         = useState([]);
+  const [newNote, setNewNote]             = useState("");
+  const [addingNote, setAddingNote]       = useState(false);
+  const notesEndRef                       = useRef(null);
+  const [showStatusDrop, setShowStatusDrop] = useState(false);
   const [showConvertModal, setShowConvertModal] = useState(false);
-  const [isConverting, setIsConverting] = useState(false);
+  const [isConverting, setIsConverting]   = useState(false);
 
   const fetchNotes = async () => {
     try {
       const res = await api.get(`/leads/${lead.id}/notes`);
       setNotes(res.data || []);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const handleAddNote = async () => {
     if (!newNote.trim()) return;
-    const tempNote = {
-      id: Date.now(),
-      note: newNote,
-      created_by_name: "You",
-      created_at: new Date().toISOString(),
-    };
+    const tempNote = { id: Date.now(), note: newNote, created_by_name: "You", created_at: new Date().toISOString() };
     setNotes((prev) => [...prev, tempNote]);
     setNewNote("");
     setTimeout(() => notesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
     try {
       setAddingNote(true);
       await api.post(`/leads/${lead.id}/notes`, { note: tempNote.note });
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setAddingNote(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setAddingNote(false); }
   };
 
   const fetchProposals = async () => {
     try {
       const res = await api.get(`/leads/${lead.id}/proposals`);
       setProposals(res.data || []);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
-  const handleStatusChange = async (e) => {
-    const newStatus = e.target.value;
+  // ── Pipeline-safe status change ───────────────────────────────────────────
+  // Only transitions permitted by getAllowedStatuses() reach the API
+  const handleStatusChange = async (newStatus) => {
     if (newStatus === status) return;
+    if (!getAllowedStatuses(status).includes(newStatus)) return; // extra safety guard
     try {
       await api.patch(`/leads/${lead.id}/status`, { status: newStatus });
       setStatus(newStatus);
-    } catch (err) {
-      console.error(err);
-    }
+      setShowStatusDrop(false);
+    } catch (err) { console.error(err); }
   };
 
   const handleConvert = async () => {
     try {
       await api.post(`/clients/convert/${lead.id}`);
       onConverted(lead.id);
-    } catch (err) {
-      console.error(err);
-    }
+    } catch (err) { console.error(err); }
   };
 
   const handleDeleteNote = async (id) => {
     const old = notes;
     setNotes((prev) => prev.filter((n) => n.id !== id));
-    try {
-      await api.delete(`/leads/notes/${id}`);
-    } catch (err) {
-      setNotes(old);
-    }
+    try { await api.delete(`/leads/notes/${id}`); }
+    catch (err) { setNotes(old); }
   };
 
   const isClosed = status === "closed";
+
+  // Build pipeline options: all stages visible, only allowed ones clickable
+  const statusOptions = PIPELINE_ORDER.map((s) => ({
+    value:    s,
+    label:    PIPELINE_LABELS[s],
+    disabled: !getAllowedStatuses(status).includes(s),
+  }));
 
   return (
     <div className="bg-[#0d1117] border border-white/[0.07] rounded-xl p-4 space-y-4 hover:border-white/[0.14] hover:shadow-lg hover:shadow-black/30 transition-all duration-200 flex flex-col">
@@ -175,29 +331,26 @@ function LeadCard({ lead, onConverted }) {
       <div className="h-px bg-white/[0.06]" />
 
       {/* Meta row */}
-      <div className="flex items-center justify-between text-xs">
+      <div className="flex items-center justify-between text-xs gap-2">
         <div>
           <span className="text-slate-600">Source </span>
           <span className="text-slate-300 font-medium">{lead.source || "Manual"}</span>
         </div>
 
-        {/* Inline status edit */}
-        {editingStatus ? (
-          <select
-            value={status}
-            onChange={(e) => { handleStatusChange(e); setEditingStatus(false); }}
-            onBlur={() => setEditingStatus(false)}
-            autoFocus
-            className="bg-[#0d1117] border border-white/10 rounded-lg px-2 py-1 text-xs text-slate-300 focus:outline-none focus:border-indigo-500/50"
-          >
-            {STATUSES.slice(STATUSES.indexOf(status)).map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+        {/* Pipeline-restricted inline status selector */}
+        {showStatusDrop ? (
+          <div className="w-44">
+            <CustomSelect
+              value={status}
+              onChange={handleStatusChange}
+              options={statusOptions}
+              placeholder="Status"
+            />
+          </div>
         ) : (
           <button
-            onClick={() => setEditingStatus(true)}
-            className="text-xs text-slate-500 hover:text-slate-300 transition-colors"
+            onClick={() => setShowStatusDrop(true)}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors whitespace-nowrap"
           >
             Change status
           </button>
@@ -206,6 +359,7 @@ function LeadCard({ lead, onConverted }) {
 
       {/* Action buttons */}
       <div className="flex gap-2 mt-auto">
+
         {/* Notes */}
         <Dialog onOpenChange={(open) => open && fetchNotes()}>
           <DialogTrigger asChild>
@@ -219,7 +373,7 @@ function LeadCard({ lead, onConverted }) {
               <p className="text-xs text-slate-500 mt-0.5">{lead.name}</p>
             </DialogHeader>
             <div className="mt-2 space-y-3">
-              <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-56 overflow-y-auto pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {notes.length ? notes.map((note) => (
                   <div key={note.id} className="bg-white/[0.03] border border-white/[0.06] p-3.5 rounded-xl relative group">
                     <p className="text-sm text-slate-200 leading-relaxed">{note.note}</p>
@@ -230,16 +384,13 @@ function LeadCard({ lead, onConverted }) {
                     <button
                       onClick={() => handleDeleteNote(note.id)}
                       className="absolute top-2.5 right-2.5 text-xs text-red-400/70 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all"
-                    >
-                      ✕
-                    </button>
+                    >✕</button>
                   </div>
                 )) : (
                   <p className="text-sm text-slate-600 text-center py-6">No notes yet</p>
                 )}
                 <div ref={notesEndRef} />
               </div>
-
               <div className="border-t border-white/[0.06] pt-3 space-y-2">
                 <Textarea
                   value={newNote}
@@ -273,7 +424,7 @@ function LeadCard({ lead, onConverted }) {
               <DialogTitle className="text-base">Lead Proposal</DialogTitle>
               <p className="text-xs text-slate-500 mt-0.5">{lead.name}</p>
             </DialogHeader>
-            <div className="mt-2 space-y-2 max-h-48 overflow-y-auto pr-1">
+            <div className="mt-2 space-y-2 max-h-48 overflow-y-auto pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {proposals.length ? proposals.map((p) => (
                 <div key={p.id} className="bg-white/[0.03] border border-white/[0.06] p-3.5 rounded-xl">
                   <p className="text-sm text-slate-200 whitespace-pre-wrap leading-relaxed">{p.proposal}</p>
@@ -316,18 +467,14 @@ function LeadCard({ lead, onConverted }) {
                 onClick={() => setShowConvertModal(false)}
                 disabled={isConverting}
                 className="px-4 py-2 rounded-lg text-xs text-slate-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.07] transition-all duration-150"
-              >
-                Cancel
-              </button>
+              >Cancel</button>
               <button
                 onClick={async () => {
                   try {
                     setIsConverting(true);
                     await handleConvert();
                     setShowConvertModal(false);
-                  } finally {
-                    setIsConverting(false);
-                  }
+                  } finally { setIsConverting(false); }
                 }}
                 disabled={isConverting}
                 className="px-4 py-2 rounded-lg text-xs font-medium bg-emerald-600 hover:bg-emerald-500 text-white transition-colors duration-200 disabled:opacity-60 flex items-center gap-2"
@@ -343,31 +490,34 @@ function LeadCard({ lead, onConverted }) {
   );
 }
 
-// ─── New Lead Modal ────────────────────────────────────────────────────────────
+// ─── New Lead Modal ───────────────────────────────────────────────────────────
 
 const EMPTY_FORM = { name: "", email: "", phone: "", source: "", status: "new", budget: "", service: "" };
 
 function NewLeadModal({ open, onClose, onCreated }) {
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [errors, setErrors] = useState({});
+  const [form, setForm]       = useState(EMPTY_FORM);
+  const [errors, setErrors]   = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  useEffect(() => { if (open) { setForm(EMPTY_FORM); setErrors({}); } }, [open]);
+  useEffect(() => {
+    if (open) { setForm(EMPTY_FORM); setErrors({}); setSuccess(false); }
+  }, [open]);
 
   if (!open) return null;
 
   const validate = () => {
     const e = {};
-    if (!form.name.trim()) e.name = "Required";
-    if (!form.email.trim()) e.email = "Required";
-    if (!form.phone.trim()) e.phone = "Required";
+    if (!form.name.trim())   e.name   = "Required";
+    if (!form.email.trim())  e.email  = "Required";
+    if (!form.phone.trim())  e.phone  = "Required";
     if (!form.source.trim()) e.source = "Required";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const handleChange = (key) => (e) => setForm((prev) => ({ ...prev, [key]: e.target.value }));
+  const handleSelect = (key) => (val) => setForm((prev) => ({ ...prev, [key]: val }));
 
   const handleSubmit = async () => {
     if (!validate()) return;
@@ -376,96 +526,108 @@ function NewLeadModal({ open, onClose, onCreated }) {
       await api.post("/leads", form);
       setSuccess(true);
       setTimeout(() => { onCreated(); onClose(); setSuccess(false); }, 1200);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
-  const Field = ({ label, children, error }) => (
-    <div>
-      <label className="block text-xs text-slate-500 uppercase tracking-widest mb-1.5">{label}</label>
-      {children}
-      {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
-    </div>
-  );
-
-  const inputCls = `${sharedInputCls} ${errors.name ? "border-red-500/50" : ""}`;
+  // New lead starts at "new" — only allow current + next step
+  const statusOptions = PIPELINE_ORDER.map((s) => ({
+    value:    s,
+    label:    PIPELINE_LABELS[s],
+    disabled: !getAllowedStatuses(form.status).includes(s),
+  }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4"
+      onClick={onClose}
+    >
       <div
-        className="w-full max-w-md bg-[#0d1117] border border-white/[0.08] rounded-2xl p-6 shadow-2xl shadow-black/60 max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-md bg-[#0d1117] border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/60 max-h-[90vh] overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-1">
-          <h2 className="text-base font-semibold text-white">Create New Lead</h2>
-          <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-white hover:bg-white/[0.08] transition-all duration-150 text-xs">✕</button>
-        </div>
-        <p className="text-xs text-slate-500 mb-5">Fill in the details to add a new lead</p>
-
-        {success && (
-          <div className="mb-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm px-3 py-2.5 rounded-lg flex items-center gap-2">
-            <span className="w-4 h-4 text-emerald-400">✓</span>
-            Lead created successfully
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-white/[0.06]">
+          <div>
+            <h2 className="text-base font-semibold text-white">Create New Lead</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Fill in the details below</p>
           </div>
-        )}
+          <button
+            onClick={onClose}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-500 hover:text-white hover:bg-white/[0.08] transition-all duration-150 text-xs"
+          >✕</button>
+        </div>
 
-        <div className="space-y-3">
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+          {success && (
+            <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 px-3 py-2.5 rounded-lg">
+              <span>✓</span> Lead created successfully
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <Field label="Full Name" error={errors.name}>
-              <input value={form.name} onChange={handleChange("name")} className={sharedInputCls} placeholder="John Smith" />
+              <input value={form.name} onChange={handleChange("name")} placeholder="John Smith"
+                className={`${sharedInputCls} ${errors.name ? "border-red-500/40" : ""}`} />
             </Field>
             <Field label="Phone" error={errors.phone}>
-              <input value={form.phone} onChange={handleChange("phone")} className={sharedInputCls} placeholder="+91 98765..." />
+              <input value={form.phone} onChange={handleChange("phone")} placeholder="+91 98765..."
+                className={`${sharedInputCls} ${errors.phone ? "border-red-500/40" : ""}`} />
             </Field>
           </div>
 
           <Field label="Email" error={errors.email}>
-            <input type="email" value={form.email} onChange={handleChange("email")} className={sharedInputCls} placeholder="john@example.com" />
+            <input type="email" value={form.email} onChange={handleChange("email")} placeholder="john@example.com"
+              className={`${sharedInputCls} ${errors.email ? "border-red-500/40" : ""}`} />
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Budget (₹)">
-              <input type="number" value={form.budget} onChange={handleChange("budget")} className={sharedInputCls} placeholder="50000" />
+              <input type="number" value={form.budget} onChange={handleChange("budget")} placeholder="50000"
+                className={sharedInputCls} />
             </Field>
             <Field label="Source" error={errors.source}>
-              <select value={form.source} onChange={handleChange("source")} className={sharedInputCls}>
-                <option value="">Select</option>
-                <option value="LinkedIn">LinkedIn</option>
-                <option value="Manual">Manual</option>
-                <option value="Website">Website</option>
-                <option value="Referral">Referral</option>
-              </select>
+              <CustomSelect
+                value={form.source}
+                onChange={handleSelect("source")}
+                options={SOURCES}
+                placeholder="Select"
+                error={errors.source}
+              />
             </Field>
           </div>
 
+          {/* Status — pipeline restricted, cannot skip stages */}
           <Field label="Status">
-            <select value={form.status} onChange={handleChange("status")} className={sharedInputCls}>
-              {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <CustomSelect
+              value={form.status}
+              onChange={handleSelect("status")}
+              options={statusOptions}
+              placeholder="Select status"
+            />
           </Field>
 
+          {/* Service — text wraps, no horizontal scrollbar */}
           <Field label="Service">
-            <select value={form.service} onChange={handleChange("service")} className={sharedInputCls}>
-              <option value="">Select Service</option>
-              {[
-                "AI Customer Support Bot", "AI Marketing Automation", "AI Workflow Automation",
-                "AI Sales Funnel System", "Custom GPT Integration", "AI Chatbot Development",
-                "AI Voice Agent Setup", "AI Website Builder", "AI Appointment Booking System",
-                "AI UGC Ads Creation", "AI CRM Automation", "Lead Generation AI System",
-              ].map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <CustomSelect
+              value={form.service}
+              onChange={handleSelect("service")}
+              options={SERVICES}
+              placeholder="Select Service"
+            />
           </Field>
         </div>
 
-        <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-white/[0.06]">
-          <button onClick={onClose} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-300 transition-colors">Cancel</button>
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/[0.06]">
+          <button onClick={onClose} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-300 transition-colors">
+            Cancel
+          </button>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="px-5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors duration-200 disabled:opacity-60 flex items-center gap-2"
+            className="px-5 py-2 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors duration-200 text-white disabled:opacity-60 flex items-center gap-2"
           >
             {loading && <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             {loading ? "Creating..." : "Create Lead"}
@@ -479,15 +641,15 @@ function NewLeadModal({ open, onClose, onCreated }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function Leads() {
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState(0);
-  const [search, setSearch] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [leads, setLeads]           = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [activeTab, setActiveTab]   = useState(0);
+  const [search, setSearch]         = useState("");
+  const [modalOpen, setModalOpen]   = useState(false);
   const [dateFilter, setDateFilter] = useState("all");
   const [serviceSort, setServiceSort] = useState("all");
-  const [stats, setStats] = useState({});
-  const [page, setPage] = useState(1);
+  const [stats, setStats]           = useState({});
+  const [page, setPage]             = useState(1);
   const [totalLeads, setTotalLeads] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -501,11 +663,8 @@ export default function Leads() {
       setTotalLeads(res.data.total || 0);
       setTotalPages(res.data.totalPages || 1);
       setStats(res.data.stats || {});
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { fetchLeads(); }, [page]);
@@ -513,17 +672,17 @@ export default function Leads() {
   const filtered = leads
     .filter((lead) => {
       const tab = FILTER_TABS[activeTab];
-      const matchTab = activeTab === 0 || lead.status?.toLowerCase() === tab.toLowerCase();
-      const matchSearch = !search || lead.name?.toLowerCase().includes(search.toLowerCase()) || lead.email?.toLowerCase().includes(search.toLowerCase()) || lead.phone?.toLowerCase().includes(search.toLowerCase());
+      const matchTab     = activeTab === 0 || lead.status?.toLowerCase() === tab.toLowerCase();
+      const matchSearch  = !search || lead.name?.toLowerCase().includes(search.toLowerCase()) || lead.email?.toLowerCase().includes(search.toLowerCase()) || lead.phone?.toLowerCase().includes(search.toLowerCase());
       const matchService = serviceSort === "all" || lead.service === serviceSort;
       let matchDate = true;
       if (lead.created_at) {
         const created = new Date(lead.created_at);
         const now = new Date();
-        if (dateFilter === "today") matchDate = created.toDateString() === now.toDateString();
+        if (dateFilter === "today")    matchDate = created.toDateString() === now.toDateString();
         if (dateFilter === "yesterday") { const y = new Date(); y.setDate(now.getDate() - 1); matchDate = created.toDateString() === y.toDateString(); }
-        if (dateFilter === "week") { const w = new Date(); w.setDate(now.getDate() - 7); matchDate = created >= w; }
-        if (dateFilter === "month") { const m = new Date(); m.setMonth(now.getMonth() - 1); matchDate = created >= m; }
+        if (dateFilter === "week")   { const w = new Date(); w.setDate(now.getDate() - 7);  matchDate = created >= w; }
+        if (dateFilter === "month")  { const m = new Date(); m.setMonth(now.getMonth() - 1); matchDate = created >= m; }
         if (dateFilter === "90days") { const d = new Date(); d.setDate(now.getDate() - 90); matchDate = created >= d; }
       }
       return matchTab && matchSearch && matchService && matchDate;
@@ -552,15 +711,10 @@ export default function Leads() {
         {/* ── KPI Cards ── */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {STAT_CARDS.map(({ key, label, Icon, iconCls, bgCls }) => (
-            <div
-              key={key}
-              className="bg-[#0d1117] border border-white/[0.07] rounded-xl px-5 py-5 flex items-center justify-between shadow-xl shadow-black/20 hover:border-white/[0.12] transition-all duration-200"
-            >
+            <div key={key} className="bg-[#0d1117] border border-white/[0.07] rounded-xl px-5 py-5 flex items-center justify-between shadow-xl shadow-black/20 hover:border-white/[0.12] transition-all duration-200">
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-widest mb-1.5">{label}</p>
-                <p className={`text-2xl font-bold ${iconCls}`}>
-                  {String(stats[key] || 0).padStart(2, "0")}
-                </p>
+                <p className={`text-2xl font-bold ${iconCls}`}>{String(stats[key] || 0).padStart(2, "0")}</p>
               </div>
               <div className={`w-11 h-11 rounded-xl ${bgCls} flex items-center justify-center`}>
                 <Icon className={iconCls} sx={{ fontSize: 20 }} />
@@ -581,12 +735,9 @@ export default function Leads() {
                     ? "bg-white/[0.08] text-white border border-white/[0.12]"
                     : "text-slate-500 hover:text-slate-300 hover:bg-white/[0.04]"
                 }`}
-              >
-                {tab}
-              </button>
+              >{tab}</button>
             ))}
           </div>
-
           <div className="relative">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" sx={{ fontSize: 14 }} />
             <input
@@ -627,9 +778,7 @@ export default function Leads() {
               disabled={page === 1}
               onClick={() => setPage(page - 1)}
               className="px-4 py-2 rounded-lg text-xs font-medium border border-white/[0.07] text-slate-400 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
-            >
-              ← Prev
-            </button>
+            >← Prev</button>
 
             {Array.from({ length: totalPages }, (_, i) => i + 1)
               .filter((p) => totalPages <= 5 || p === 1 || p === totalPages || Math.abs(p - page) <= 1)
@@ -645,9 +794,7 @@ export default function Leads() {
                           ? "bg-indigo-600 text-white"
                           : "border border-white/[0.07] text-slate-400 hover:text-white hover:bg-white/[0.06]"
                       }`}
-                    >
-                      {p}
-                    </button>
+                    >{p}</button>
                   </span>
                 );
               })}
@@ -656,9 +803,7 @@ export default function Leads() {
               disabled={page === totalPages}
               onClick={() => setPage(page + 1)}
               className="px-4 py-2 rounded-lg text-xs font-medium border border-white/[0.07] text-slate-400 hover:text-white hover:bg-white/[0.06] disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-150"
-            >
-              Next →
-            </button>
+            >Next →</button>
           </div>
         )}
       </div>

@@ -316,7 +316,7 @@ const DashboardContent = memo(({ data }) => {
                       </p>
                     </div>
                   </div>
-                  <p className="text-emerald-400 text-sm font-semibold flex-shrink-0 ml-3">₹ {fmtINR(client.total_paid)}</p>
+                  <p className="text-emerald-400 text-sm font-semibold flex-shrink-0 ml-3">₹ {fmtINR(client.total_value)}</p>
                 </div>
               ))}
             </div>

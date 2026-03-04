@@ -509,7 +509,7 @@ function Clients() {
                   <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   Saving...
                 </>
-              ) : "Save Client"}
+              ) : "Create Client"}
             </button>
           </div>
         </Modal>

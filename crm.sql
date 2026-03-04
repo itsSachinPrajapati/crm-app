@@ -1,349 +1,370 @@
-CREATE DATABASE crm_app;
-SHOW DATABASES;
+-- =============================================================================
+-- CRM APP — DATABASE SCHEMA
+-- =============================================================================
 
+
+-- =============================================================================
+-- 1. DATABASE
+-- =============================================================================
+
+CREATE DATABASE crm_app;
 USE crm_app;
 
+
+-- =============================================================================
+-- 2. TABLE: users
+-- =============================================================================
+
 CREATE TABLE users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    email       VARCHAR(100) UNIQUE NOT NULL,
+    password    VARCHAR(255) NOT NULL,
+    role        ENUM('admin','employee') DEFAULT 'admin',
+    owner_id    INT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
-CREATE TABLE leads (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100),
-    phone VARCHAR(20),
-    status ENUM('new','contacted','qualified','closed','lost') DEFAULT 'new',
-    expected_value DECIMAL(10,2),
-    user_id INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
-);
+
+-- =============================================================================
+-- 3. TABLE: clients
+-- =============================================================================
 
 CREATE TABLE clients (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100),
-    phone VARCHAR(20),
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    email       VARCHAR(100),
+    phone       VARCHAR(20),
+    project     VARCHAR(255) NOT NULL,
+    status      ENUM('active','inactive','blacklisted') DEFAULT 'active',
+    notes       TEXT,
+    decision    ENUM('qualified','not_interested','pending') DEFAULT 'qualified',
     total_value DECIMAL(10,2) DEFAULT 0,
-    user_id INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    workspace_id INT,
+    user_id     INT,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
-CREATE TABLE tasks (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-    priority ENUM('low','medium','high') DEFAULT 'medium',
-    due_date DATE,
-    status ENUM('pending','in_progress','completed') DEFAULT 'pending',
-    user_id INT,
-    client_id INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+
+-- =============================================================================
+-- 4. TABLE: leads
+-- =============================================================================
+
+CREATE TABLE leads (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    name           VARCHAR(100) NOT NULL,
+    email          VARCHAR(100),
+    phone          VARCHAR(20),
+    status         ENUM(
+                       'new', 'contacted', 'follow_up', 'qualified',
+                       'proposal_sent', 'negotiation', 'closed', 'lost'
+                   ) DEFAULT 'new',
+    source         VARCHAR(50) DEFAULT 'manual',
+    expected_value DECIMAL(10,2),
+    project_info   VARCHAR(255),
+    address        TEXT,
+    proposal       TEXT,
+    converted      TINYINT(1) DEFAULT 0,
+    converted_at   TIMESTAMP NULL,
+    workspace_id   INT,
+    user_id        INT,
+    created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );
 
-drop table tasks;
+
+-- =============================================================================
+-- 5. TABLE: projects
+-- =============================================================================
+
+CREATE TABLE projects (
+    id               INT PRIMARY KEY AUTO_INCREMENT,
+    owner_id         INT NOT NULL,
+    client_id        INT NOT NULL,
+    workspace_id     INT NOT NULL,
+    name             VARCHAR(255) NOT NULL,
+    description      TEXT,
+    service_type     VARCHAR(100),
+    total_amount     DECIMAL(10,2) NOT NULL,
+    advance_amount   DECIMAL(10,2) NOT NULL,
+    remaining_amount DECIMAL(10,2) NOT NULL,
+    payment_terms    VARCHAR(255),
+    status           ENUM('active','completed','on_hold') DEFAULT 'active',
+    current_phase    ENUM('planning','design','development','testing','delivery') DEFAULT 'planning',
+    progress_percent INT DEFAULT 0,
+    start_date       DATE,
+    deadline         DATE,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+    FOREIGN KEY (owner_id)  REFERENCES users(id)   ON DELETE CASCADE
+);
+
+
+-- =============================================================================
+-- 6. TABLE: tasks
+-- =============================================================================
 
 CREATE TABLE tasks (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-
-    title VARCHAR(255) NOT NULL,
-    description TEXT,
-
-    priority ENUM('low','medium','high') DEFAULT 'medium',
-    status ENUM('pending','in_progress','completed') DEFAULT 'pending',
-    due_date DATE,
-
-    assigned_to INT,
-    created_by INT NOT NULL,
-    client_id INT NOT NULL,
-
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (assigned_to) REFERENCES users(id) ON DELETE SET NULL,
-    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    title        VARCHAR(255) NOT NULL,
+    description  TEXT,
+    priority     ENUM('low','medium','high')               DEFAULT 'medium',
+    status       ENUM('pending','in_progress','completed') DEFAULT 'pending',
+    due_date     DATE,
+    assigned_to  INT,
+    created_by   INT NOT NULL,
+    client_id    INT NOT NULL,
+    project_id   INT NOT NULL,
+    workspace_id INT,
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (assigned_to) REFERENCES users(id)    ON DELETE SET NULL,
+    FOREIGN KEY (created_by)  REFERENCES users(id)    ON DELETE CASCADE,
+    FOREIGN KEY (client_id)   REFERENCES clients(id)  ON DELETE CASCADE,
+    FOREIGN KEY (project_id)  REFERENCES projects(id) ON DELETE CASCADE
 );
+
+
+-- =============================================================================
+-- 7. TABLE: payments
+-- =============================================================================
 
 CREATE TABLE payments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    client_id INT NOT NULL,
-    amount DECIMAL(10,2) NOT NULL,
+    id           INT AUTO_INCREMENT PRIMARY KEY,
+    client_id    INT NOT NULL,
+    project_id   INT,
+    workspace_id INT,
+    amount       DECIMAL(10,2) NOT NULL,
     payment_date DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+    created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id)  REFERENCES clients(id)  ON DELETE CASCADE,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
-show tables;
 
-ALTER TABLE leads ADD COLUMN source VARCHAR(50) DEFAULT 'manual';
+-- =============================================================================
+-- 8. TABLE: lead_notes
+-- =============================================================================
+
+CREATE TABLE lead_notes (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    lead_id    INT NOT NULL,
+    note       TEXT NOT NULL,
+    created_by INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (lead_id)    REFERENCES leads(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+);
+
+
+-- =============================================================================
+-- 9. TABLE: project_requirements
+-- =============================================================================
+
+CREATE TABLE project_requirements (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    project_id  INT NOT NULL,
+    title       VARCHAR(255) NOT NULL,
+    description TEXT,
+    status      ENUM('pending','in_progress','completed') DEFAULT 'pending',
+    created_by  INT NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id)    ON DELETE CASCADE
+);
+
+
+-- =============================================================================
+-- 10. TABLE: project_features
+-- =============================================================================
+
+CREATE TABLE project_features (
+    id         INT PRIMARY KEY AUTO_INCREMENT,
+    project_id INT NOT NULL,
+    title      VARCHAR(255) NOT NULL,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+);
+
+
+-- =============================================================================
+-- 11. TABLE: project_milestones
+-- =============================================================================
+
+CREATE TABLE project_milestones (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    project_id  INT NOT NULL,
+    title       VARCHAR(255) NOT NULL,
+    description TEXT NULL,
+    due_date    DATE NULL,
+    status      ENUM('pending','in_progress','completed') DEFAULT 'pending',
+    created_by  INT NOT NULL,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id)    ON DELETE CASCADE
+);
+
+
+-- =============================================================================
+-- 12. TABLE: project_members
+-- =============================================================================
+
+CREATE TABLE project_members (
+    id          INT PRIMARY KEY AUTO_INCREMENT,
+    project_id  INT NOT NULL,
+    user_id     INT NOT NULL,
+    role        VARCHAR(100) DEFAULT 'member',
+    assigned_by INT NOT NULL,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_project_user (project_id, user_id),
+    FOREIGN KEY (project_id)  REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)     REFERENCES users(id)    ON DELETE CASCADE,
+    FOREIGN KEY (assigned_by) REFERENCES users(id)    ON DELETE CASCADE
+);
+
+
+-- =============================================================================
+-- 13. TABLE: project_activity_logs
+-- =============================================================================
+
+CREATE TABLE project_activity_logs (
+    id         INT PRIMARY KEY AUTO_INCREMENT,
+    project_id INT NOT NULL,
+    user_id    INT NOT NULL,
+    action     VARCHAR(255) NOT NULL,
+    metadata   JSON NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id)    REFERENCES users(id)    ON DELETE CASCADE
+);
+
+
+-- =============================================================================
+-- 14. TABLE: task_history
+-- =============================================================================
 
 CREATE TABLE task_history (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    task_id INT NOT NULL,
-    old_title VARCHAR(255),
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    task_id         INT NOT NULL,
+    old_title       VARCHAR(255),
     old_description TEXT,
-    old_status ENUM('pending','in_progress','completed'),
-    old_priority ENUM('low','medium','high'),
-    old_due_date DATE,
-    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
+    old_status      ENUM('pending','in_progress','completed'),
+    old_priority    ENUM('low','medium','high'),
+    old_due_date    DATE,
+    changed_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
 );
 
-ALTER TABLE clients MODIFY lead_id INT NULL;
-ALTER TABLE clients add project varchar(255) Not NULL;
-select * from users;
-SELECT * FROM leads;
+
+-- =============================================================================
+-- CRM APP — DESCRIBE & SELECT ALL TABLES
+-- =============================================================================
+
+
+-- =============================================================================
+-- 1. users
+-- =============================================================================
+
+DESCRIBE users;
+SELECT * FROM users;
+
+
+-- =============================================================================
+-- 2. clients
+-- =============================================================================
+
+DESCRIBE clients;
 SELECT * FROM clients;
-SELECT * FROM tasks;
-select * from payments;
-select * from projects;
-
-describe tasks;
-describe leads;
-SELECT id, name, total_value, user_id FROM clients;
-select  sum(total_value) from clients;
-
-ALTER TABLE leads
-ADD COLUMN project_info VARCHAR(255),
-ADD COLUMN address TEXT,
-ADD COLUMN proposal TEXT;
-
-CREATE TABLE projects (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  client_id INT NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  description TEXT,
-  service_type VARCHAR(100),
-  total_amount DECIMAL(12,2) NOT NULL,
-  advance_amount DECIMAL(12,2) DEFAULT 0,
-  remaining_amount DECIMAL(12,2) DEFAULT 0,
-  payment_terms VARCHAR(255),
-  status ENUM('active','completed','on_hold') DEFAULT 'active',
-  current_phase ENUM('planning','design','development','testing','delivery') DEFAULT 'planning',
-  progress_percent INT DEFAULT 0,
-  start_date DATE,
-  deadline DATE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
-);
-drop table projects;
-
-ALTER TABLE users 
-ADD COLUMN role ENUM('admin','employee') DEFAULT 'admin';
-
-ALTER TABLE clients DROP COLUMN total_value;
-ALTER TABLE clients
-ADD COLUMN status ENUM('active','inactive','blacklisted') DEFAULT 'active';
-
-ALTER TABLE clients
-ADD COLUMN notes TEXT;
-
-ALTER TABLE clients
-ADD COLUMN decision ENUM('qualified','not_interested','pending') DEFAULT 'qualified';
-
-ALTER TABLE tasks
-ADD COLUMN project_id INT;
-
-ALTER TABLE tasks
-ADD CONSTRAINT fk_task_project
-FOREIGN KEY (project_id) REFERENCES projects(id)
-ON DELETE CASCADE;
 
 
-ALTER TABLE payments
-ADD COLUMN project_id INT;
+-- =============================================================================
+-- 3. leads
+-- =============================================================================
 
-ALTER TABLE payments
-ADD CONSTRAINT fk_project
-FOREIGN KEY (project_id) REFERENCES projects(id)
-ON DELETE CASCADE;
-
-
-ALTER TABLE leads
-MODIFY COLUMN status ENUM(
-  'new',
-  'contacted',
-  'follow_up',
-  'qualified',
-  'proposal_sent',
-  'negotiation',
-  'closed',
-  'lost'
-) DEFAULT 'new';
-
-ALTER TABLE leads
-ADD COLUMN converted_at TIMESTAMP NULL;
-
-UPDATE leads SET status = 'won' WHERE status = 'closed';
+DESCRIBE leads;
+SELECT * FROM leads;
 
 
-describe  leads;
-describe clients;
-describe payments;
-describe users;
-describe tasks;
-
-CREATE TABLE lead_notes (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  lead_id INT NOT NULL,
-  note TEXT NOT NULL,
-  created_by INT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-  FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
-)
-select * from leads;
-
-ALTER TABLE clients ADD COLUMN total_value DECIMAL(10,2) DEFAULT 0;
-ALTER TABLE leads ADD COLUMN converted TINYINT(1) DEFAULT 0;
-
-SELECT id, status, converted FROM leads;
-
-insert into users (name,email,password,role) 
-values("Shubhangi Prajapati","bharati.9892@gmail.com"," $2b$10$D2ZqHuuJj9qGkoMEAE3KJO7rYW4v1aamTDa3Eofk0o071iKMxSrMS","employee");
-
-ALTER TABLE users 
-ADD COLUMN owner_id INT NULL,
-ADD FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE;
-select * from users;
-select * from projects;
-drop table team;
-
-ALTER TABLE tasks
-ADD COLUMN project_id INT NOT NULL,
-ADD CONSTRAINT fk_tasks_project
-FOREIGN KEY (project_id)
-REFERENCES projects(id)
-ON DELETE CASCADE;
-
-UPDATE users 
-SET password = '$2b$10$5csOWkKE6xRDA5NBOJFJS.D40AaHpqQzYBPMDCj5A5W7tw/Nop/zS'
-WHERE email = 'sachinprajapati2622@gmail.com';
-
-
-delete from users where id=8;
-
-ALTER TABLE tasks 
-MODIFY project_id INT NOT NULL;
-
-ALTER TABLE tasks
-ADD CONSTRAINT fk_tasks_project
-FOREIGN KEY (project_id)
-REFERENCES projects(id)
-ON DELETE CASCADE;
-
-ALTER TABLE projects
-ADD COLUMN workspace_id INT NOT NULL;
-
-describe projects;
-
-ALTER TABLE projects
-MODIFY total_amount DECIMAL(10,2) NOT NULL,
-MODIFY advance_amount DECIMAL(10,2) NOT NULL,
-MODIFY remaining_amount DECIMAL(10,2) NOT NULL;
-
-
-CREATE TABLE project_requirements (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  project_id INT NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  description TEXT,
-  status ENUM('pending','in_progress','completed') DEFAULT 'pending',
-  created_by INT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE project_members (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  project_id INT NOT NULL,
-  user_id INT NOT NULL,
-  role VARCHAR(100) DEFAULT 'member',
-  assigned_by INT NOT NULL,
-  assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-  UNIQUE KEY unique_project_user (project_id, user_id),
-
-  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE project_activity_logs (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  project_id INT NOT NULL,
-  user_id INT NOT NULL,
-  action VARCHAR(255) NOT NULL,
-  metadata JSON NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE TABLE project_milestones (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  project_id INT NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  description TEXT NULL,
-  due_date DATE NULL,
-  status ENUM('pending','in_progress','completed') DEFAULT 'pending',
-  created_by INT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
-  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
-);
-
-ALTER TABLE projects
-MODIFY owner_id INT NOT NULL;
-
-ALTER TABLE projects
-ADD CONSTRAINT fk_projects_owner
-FOREIGN KEY (owner_id)
-REFERENCES users(id)
-ON DELETE CASCADE;
-
-ALTER TABLE projects
-ADD COLUMN owner_id INT NULL AFTER id;
-
-CREATE TABLE project_features (
-  id INT PRIMARY KEY AUTO_INCREMENT,
-  project_id INT NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  created_by INT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
-);
-
-
+-- =============================================================================
+-- 4. projects
+-- =============================================================================
 
 DESCRIBE projects;
-select * from payments;
+SELECT * FROM projects;
 
 
+-- =============================================================================
+-- 5. tasks
+-- =============================================================================
 
-ALTER TABLE leads ADD COLUMN workspace_id INT;
-ALTER TABLE clients ADD COLUMN workspace_id INT;
-ALTER TABLE tasks ADD COLUMN workspace_id INT;
-ALTER TABLE payments ADD COLUMN workspace_id INT;
+DESCRIBE tasks;
+SELECT * FROM tasks;
 
-describe payments;
-describe projects;
 
-select * from payments;
-select * from projects;
+-- =============================================================================
+-- 6. payments
+-- =============================================================================
+
+DESCRIBE payments;
+SELECT * FROM payments;
+
+
+-- =============================================================================
+-- 7. lead_notes
+-- =============================================================================
+
+DESCRIBE lead_notes;
+SELECT * FROM lead_notes;
+
+
+-- =============================================================================
+-- 8. project_requirements
+-- =============================================================================
+
+DESCRIBE project_requirements;
+SELECT * FROM project_requirements;
+
+
+-- =============================================================================
+-- 9. project_features
+-- =============================================================================
+
+DESCRIBE project_features;
+SELECT * FROM project_features;
+
+
+-- =============================================================================
+-- 10. project_milestones
+-- =============================================================================
+
+DESCRIBE project_milestones;
+SELECT * FROM project_milestones;
+
+
+-- =============================================================================
+-- 11. project_members
+-- =============================================================================
+
+DESCRIBE project_members;
+SELECT * FROM project_members;
+
+
+-- =============================================================================
+-- 12. project_activity_logs
+-- =============================================================================
+
+DESCRIBE project_activity_logs;
+SELECT * FROM project_activity_logs;
+
+
+-- =============================================================================
+-- 13. task_history
+-- =============================================================================
+
+DESCRIBE task_history;
+SELECT * FROM task_history;

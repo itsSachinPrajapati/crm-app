@@ -90,7 +90,7 @@ function Projects() {
   const [form, setForm] = useState({
     name: "",
     client_id: "",
-    total_amount: "",
+    budget: "",
     start_date: "",
     deadline: "",
   });
@@ -137,12 +137,12 @@ function Projects() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.client_id || !form.total_amount || !form.start_date || !form.deadline) return;
+    if (!form.name || !form.client_id || !form.budget|| !form.start_date || !form.deadline) return;
     setSubmitting(true);
     try {
-      await api.post("/projects", { ...form, total_amount: Number(form.total_amount) });
+      await api.post("/projects", { ...form, budget: Number(form.budget) });
       dialogRef.current?.close();
-      setForm({ name: "", client_id: "", total_amount: "", start_date: "", deadline: "" });
+      setForm({ name: "", client_id: "", budget: "", start_date: "", deadline: "" });
       fetchProjects();
     } catch (err) {
       console.error(err);
@@ -254,7 +254,7 @@ function Projects() {
 
                     {/* Total */}
                     <TableCell className="px-5 py-3.5 text-emerald-400 font-semibold text-sm">
-                      ₹{formatCurrency(project.total_amount)}
+                      ₹{formatCurrency(project.budget)}
                     </TableCell>
 
                     {/* Remaining */}
@@ -428,8 +428,8 @@ function Projects() {
                 <input
                   placeholder="e.g. 150000"
                   type="number"
-                  value={form.total_amount}
-                  onChange={(e) => setForm({ ...form, total_amount: e.target.value })}
+                  value={form.budget}
+                  onChange={(e) => setForm({ ...form, budget: e.target.value })}
                   className={inputCls}
                 />
               </div>

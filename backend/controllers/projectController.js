@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { logProjectActivity } = require("../utils/activityLogger");
 
 // =======================
 // CREATE PROJECT
@@ -71,7 +72,7 @@ exports.createProject = async (req, res) => {
       `INSERT INTO projects
        (name, description, client_id, workspace_id,
         budget, status, start_date, deadline)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?,  ?)`,
       [
         name,
         description || null,
@@ -80,7 +81,8 @@ exports.createProject = async (req, res) => {
         budget,
         status || "active",
         start_date,
-        deadline
+        deadline,
+        
       ]
     );
 
@@ -375,7 +377,7 @@ exports.getProjectById = async (req, res) => {
              status = ?,
              start_date = ?,
              deadline = ?,
-             budget =
+             budget = ?
          WHERE id = ? AND workspace_id = ?`,
         [
           name ?? project.name,
@@ -383,8 +385,9 @@ exports.getProjectById = async (req, res) => {
           status ?? project.status,
           start_date ?? project.start_date,
           deadline ?? project.deadline,
-          id,
-          workspaceId
+          req.body.budget ?? project.budget, 
+          id,                                  
+          workspaceId                         
         ]
       );
   
