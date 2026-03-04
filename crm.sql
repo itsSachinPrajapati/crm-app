@@ -4,11 +4,9 @@
 
 
 -- =============================================================================
--- 1. DATABASE
+ -- 1. DATABASE
 -- =============================================================================
 
-CREATE DATABASE crm_app;
-USE crm_app;
 
 
 -- =============================================================================
@@ -273,7 +271,6 @@ CREATE TABLE task_history (
 DESCRIBE users;
 SELECT * FROM users;
 
-
 -- =============================================================================
 -- 2. clients
 -- =============================================================================
@@ -296,7 +293,6 @@ SELECT * FROM leads;
 
 DESCRIBE projects;
 SELECT * FROM projects;
-
 
 -- =============================================================================
 -- 5. tasks
@@ -368,3 +364,6 @@ SELECT * FROM project_activity_logs;
 
 DESCRIBE task_history;
 SELECT * FROM task_history;
+
+
+SELECT id, workspace_id FROM projects WHERE id = 210;
