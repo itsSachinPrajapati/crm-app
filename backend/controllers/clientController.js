@@ -89,9 +89,16 @@ exports.convertLeadToClient = async (req, res) => {
     // 2️⃣ Insert client
     await connection.execute(
       `INSERT INTO clients 
-       (name, email, phone, workspace_id, lead_id)
-       VALUES (?, ?, ?, ?, ?)`,
-      [lead.name, lead.email, lead.phone, workspaceId, leadId]
+      (name, email, phone, total_value, workspace_id, lead_id)
+      VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        lead.name,
+        lead.email,
+        lead.phone,
+        lead.budget || 0,
+        workspaceId,
+        leadId
+      ]
     );
 
     // 3️⃣ Update lead
