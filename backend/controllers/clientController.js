@@ -1,8 +1,29 @@
 const db = require("../config/db");
 
-// =============================
-// CREATE CLIENT
-// =============================
+/* =============================
+   HELPER: INSERT CLIENT
+============================= */
+const insertClient = async (conn, clientData) => {
+  const { name, email, phone, total_value, workspace_id, lead_id } = clientData;
+
+  await conn.execute(
+    `INSERT INTO clients
+     (name, email, phone, total_value, workspace_id, lead_id)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      name,
+      email,
+      phone,
+      total_value || 0,
+      workspace_id,
+      lead_id || null
+    ]
+  );
+};
+
+/* =============================
+   CREATE CLIENT (Manual)
+============================= */
 exports.createClient = async (req, res) => {
   const { name, email, phone, total_value } = req.body;
 
@@ -19,19 +40,14 @@ exports.createClient = async (req, res) => {
         ? req.user.id
         : req.user.owner_id;
 
-    await db.execute(
-        `INSERT INTO clients 
-         (name, email, phone, total_value, workspace_id, lead_id)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-          lead.name,
-          lead.email,
-          lead.phone,
-          lead.budget || 0,
-          workspaceId,
-          leadId
-        ]
-      );
+    await insertClient(db, {
+      name,
+      email,
+      phone,
+      total_value,
+      workspace_id: workspaceId,
+      lead_id: null
+    });
 
     res.status(201).json({
       success: true,
@@ -47,9 +63,9 @@ exports.createClient = async (req, res) => {
   }
 };
 
-// =============================
-// CONVERT LEAD TO CLIENT
-// =============================
+/* =============================
+   CONVERT LEAD TO CLIENT
+============================= */
 exports.convertLeadToClient = async (req, res) => {
   const connection = await db.getConnection();
 
@@ -63,7 +79,7 @@ exports.convertLeadToClient = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 1️⃣ Get lead
+    /* Get lead */
     const [leads] = await connection.execute(
       "SELECT * FROM leads WHERE id = ? AND workspace_id = ?",
       [leadId, workspaceId]
@@ -78,30 +94,42 @@ exports.convertLeadToClient = async (req, res) => {
 
     if (lead.status !== "closed") {
       await connection.rollback();
-      return res.status(400).json({ message: "Only closed leads allowed" });
+      return res.status(400).json({
+        message: "Only closed leads can be converted",
+      });
     }
 
     if (lead.converted === 1) {
       await connection.rollback();
-      return res.status(400).json({ message: "Lead already converted" });
+      return res.status(400).json({
+        message: "Lead already converted",
+      });
     }
 
-    // 2️⃣ Insert client
-    await connection.execute(
-      `INSERT INTO clients 
-      (name, email, phone, total_value, workspace_id, lead_id)
-      VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        lead.name,
-        lead.email,
-        lead.phone,
-        lead.budget || 0,
-        workspaceId,
-        leadId
-      ]
+    /* Prevent duplicate client */
+    const [existing] = await connection.execute(
+      "SELECT id FROM clients WHERE lead_id = ?",
+      [leadId]
     );
 
-    // 3️⃣ Update lead
+    if (existing.length > 0) {
+      await connection.rollback();
+      return res.status(400).json({
+        message: "Client already exists for this lead",
+      });
+    }
+
+    /* Insert client */
+    await insertClient(connection, {
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      total_value: lead.budget,
+      workspace_id: workspaceId,
+      lead_id: leadId
+    });
+
+    /* Update lead */
     await connection.execute(
       "UPDATE leads SET converted = 1 WHERE id = ? AND workspace_id = ?",
       [leadId, workspaceId]
@@ -109,20 +137,26 @@ exports.convertLeadToClient = async (req, res) => {
 
     await connection.commit();
 
-    res.status(201).json({ message: "Converted successfully" });
+    res.status(201).json({
+      success: true,
+      message: "Lead converted to client successfully",
+    });
 
   } catch (err) {
     await connection.rollback();
     console.error("Convert Error:", err);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+    });
   } finally {
     connection.release();
   }
 };
 
-// =============================
-// GET ALL CLIENTS
-// =============================
+/* =============================
+   GET ALL CLIENTS
+============================= */
 exports.getAllClients = async (req, res) => {
   try {
     const workspaceId =
@@ -163,9 +197,9 @@ exports.getAllClients = async (req, res) => {
   }
 };
 
-// =============================
-// GET CLIENT BY ID
-// =============================
+/* =============================
+   GET CLIENT BY ID
+============================= */
 exports.getClientById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -201,9 +235,9 @@ exports.getClientById = async (req, res) => {
   }
 };
 
-// =============================
-// UPDATE CLIENT
-// =============================
+/* =============================
+   UPDATE CLIENT
+============================= */
 exports.updateClient = async (req, res) => {
   try {
     const { id } = req.params;
@@ -242,9 +276,9 @@ exports.updateClient = async (req, res) => {
   }
 };
 
-// =============================
-// DELETE CLIENT
-// =============================
+/* =============================
+   DELETE CLIENT
+============================= */
 exports.deleteClient = async (req, res) => {
   try {
     const { id } = req.params;
