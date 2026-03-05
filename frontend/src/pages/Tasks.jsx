@@ -3,7 +3,7 @@ import DashboardLayout from "../layout/DashboardLayout";
 import Modal from "../components/Modal";
 import { Button } from "../components/ui/button";
 import Input from "../components/ui/Input";
-import { Badge } from "../components/ui/Badge";
+import { Badge } from "../components/ui/badge";
 import api from "../services/api";
 import {
   DragDropContext,
