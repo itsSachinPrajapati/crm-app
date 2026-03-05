@@ -13,7 +13,7 @@ app.use((req, res, next) => {
 
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://crm-app-sand.vercel.app"
+  "https://crm-app.in"
 ];
 
 app.use(
